@@ -1,7 +1,7 @@
 function! s:Init()
 	" TODO get list of configurations, we need a path configured by the user
 	" where we can search for configurations
-	let g:bob_package_list = system("!bob ls")
+	let g:bob_package_list = system("bob ls")
 	let g:bob_base_path = expand('%:p:h')
 endfunction
 
