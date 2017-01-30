@@ -8,8 +8,8 @@ endfunction
 function! s:GotoPackageSourceDir(package)
 	let l:dir = system("cd " . shellescape(g:bob_base_path) . "; bob query-path -f '{src}' " . a:package)
 	echo l:dir
-	if l:dir
-		cd l:dir
+	if !empty(l:dir)
+		execute "cd " g:bob_base_path . "/" . l:dir
 	else
 		echom "package has no sources or is not checked out"
 	endif
