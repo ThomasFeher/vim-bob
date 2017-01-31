@@ -1,3 +1,7 @@
+function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
+	return s:bob_package_list
+endfunction
+
 function! s:Init()
 	let s:bob_package_list = system("bob ls")
 	let s:bob_base_path = expand('%:p:h')
@@ -30,6 +34,6 @@ function! s:Dev(package)
 endfunction
 
 command! BobInit call s:Init()
-command! -nargs=? BobGoto call s:GotoPackageSourceDir(<f-args>)
-command! -nargs=1 BobCheckout call s:CheckoutPackage(<f-args>)
-command! -nargs=1 BobDev call s:Dev(<f-args>)
+command! -nargs=? -complete=custom,s:PackageComplete BobGoto call s:GotoPackageSourceDir(<f-args>)
+command! -nargs=1 -complete=custom,s:PackageComplete BobCheckout call s:CheckoutPackage(<f-args>)
+command! -nargs=1 -complete=custom,s:PackageComplete BobDev call s:Dev(<f-args>)
