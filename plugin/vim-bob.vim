@@ -45,12 +45,12 @@ function! s:Dev(package,...)
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob dev " . a:package
 	if a:0 == 1
 		let l:config = " -c " . s:bob_config_path . "/" . a:1
-		echo l:command . l:config
-		echo system(l:command . l:config)
+		let &l:makeprg = l:command . l:config
+		make
 		return
 	endif
-	echo l:command
-	echo system(l:command)
+	let &l:makeprg = l:command
+	make
 endfunction
 
 command! BobInit call s:Init()
