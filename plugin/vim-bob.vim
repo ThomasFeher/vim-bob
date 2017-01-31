@@ -24,6 +24,6 @@ function! s:Dev(package)
 endfunction
 
 command! BobInit call s:Init()
-command! -nargs=1 BobGoto call s:GotoPackageSourceDir(<q-args>)
-command! -nargs=1 BobCheckout call s:CheckoutPackage(<q-args>)
-command! -nargs=1 BobDev call s:Dev(<q-args>)
+command! -nargs=? BobGoto call s:GotoPackageSourceDir(<f-args>)
+command! -nargs=1 BobCheckout call s:CheckoutPackage(<f-args>)
+command! -nargs=1 BobDev call s:Dev(<f-args>)
