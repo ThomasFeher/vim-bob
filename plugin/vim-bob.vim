@@ -1,10 +1,9 @@
 function! s:Init()
-	" TODO get list of configurations, we need a path configured by the user
-	" where we can search for configurations
 	let s:bob_package_list = system("bob ls")
 	let s:bob_base_path = expand('%:p:h')
 	let s:bob_config_path = get(g:, 'bob_config_path', "")
 	let s:bob_config_path_abs = s:bob_base_path."/".s:bob_config_path
+	let s:config_names = map(globpath(s:bob_config_path_abs, '*.yaml', 0, 1), 'fnamemodify(v:val, ":t:r")')
 endfunction
 
 function! s:GotoPackageSourceDir(...)
