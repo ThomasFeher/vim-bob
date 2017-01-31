@@ -1,0 +1,43 @@
+*vim-bob* Plugin for working in a Bob environment
+
+Author: Thomas Fehér
+URL:    https://github.com/ThomasFeher/vim-bob
+
+==============================================================================
+
+Commands                                         *vim-bob-commands*
+
+                                                 *vim-bob:BobInit*
+:BobInit
+         Must be run before any other vim-bob command can be used. Initializes
+         vim-bob with the current working directory as the base directory.
+         The base directory is the directory where the bob commands are
+         normally executed on the command line.
+
+                                                 *vim-bob:BobCheckout*
+:BobCheckout [package]
+         Checkout the given [package].
+         Runs "bob dev [package] --checkout-only".
+
+                                                 *vim-bob:BobGoto*
+:BobGoto [package]
+         Changes the current working directory to be the source
+         directory of the given [package].
+
+                                                 *vim-bob:BobDev*
+:BobDev [package]([configuration])
+         Build [package] with [configuration] in development mode.
+         Runs "bob dev [package] -c <configuration-dir>/[configuration]"
+         Additionally sets *makeprg* for the current file, so that
+         subsequently the same command can be run via |:make| and error
+         messages are parsed and gathered in the *quickfix* window.
+
+==============================================================================
+
+Configuration                                    *vim-bob-configuration*
+
+g:bob_config_path
+         Path to configuration files (with file extension ".yaml") relative to
+         the base path.
+
+ vim:tw=78:et:ft=help:norl:
