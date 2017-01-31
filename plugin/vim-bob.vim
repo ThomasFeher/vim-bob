@@ -3,6 +3,8 @@ function! s:Init()
 	" where we can search for configurations
 	let s:bob_package_list = system("bob ls")
 	let s:bob_base_path = expand('%:p:h')
+	let s:bob_config_path = get(g:, 'bob_config_path', "")
+	let s:bob_config_path_abs = s:bob_base_path."/".s:bob_config_path
 endfunction
 
 function! s:GotoPackageSourceDir(...)
