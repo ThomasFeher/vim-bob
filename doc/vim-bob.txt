@@ -25,9 +25,10 @@ Commands                                         *vim-bob-commands*
          directory of the given [package].
 
                                                  *vim-bob:BobDev*
-:BobDev [package]([configuration])
+:BobDev [package] ([configuration] ([parameters]))
          Build [package] with [configuration] in development mode.
-         Runs "bob dev [package] -c <configuration-dir>/[configuration]"
+         Runs "bob dev [package] -c <configuration-dir>/[configuration]
+         [parameters]"
          Additionally sets *makeprg* for the current file, so that
          subsequently the same command can be run via |:make| and error
          messages are parsed and gathered in the *quickfix* window.
