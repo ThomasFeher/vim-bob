@@ -45,6 +45,7 @@ function! s:Dev(package,...)
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob dev " . a:package
 	if a:0 == 0
 		let &l:makeprg = l:command
+		make
 		return
 	endif
 
