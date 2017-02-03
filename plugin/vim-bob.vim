@@ -44,15 +44,15 @@ endfunction
 function! s:Dev(package,...)
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob dev " . a:package
 	if a:0 == 0
-		let &l:makeprg = l:command
+		let &makeprg = l:command
 	else
 		let l:config = " -c " . s:bob_config_path . "/" . a:1
-		let &l:makeprg = l:command . l:config
+		let &makeprg = l:command . l:config
 	endif
 
 	if a:0 > 1
 		let l:args = join(a:000[1:-1])
-		let &l:makeprg = l:command . l:config . " " . l:args
+		let &makeprg = l:command . l:config . " " . l:args
 	endif
 
 	make
