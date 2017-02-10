@@ -1,9 +1,18 @@
+let s:is_initialized = 0
+
 function! s:Init()
 	let s:bob_package_list = system("bob ls")
 	let s:bob_base_path = getcwd()
 	let s:bob_config_path = get(g:, 'bob_config_path', "")
 	let s:bob_config_path_abs = s:bob_base_path."/".s:bob_config_path
 	let s:config_names = map(globpath(s:bob_config_path_abs, '*.yaml', 0, 1), 'fnamemodify(v:val, ":t:r")')
+	let s:is_initialized = 1
+endfunction
+
+function! s:CheckInit()
+	if !s:is_initialized
+		throw "run BobInit first!"
+	endif
 endfunction
 
 function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
@@ -23,6 +32,7 @@ function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
 endfunction
 
 function! s:GotoPackageSourceDir(...)
+	call s:CheckInit()
 	if a:0 == 0
 		execute "cd " . s:bob_base_path
 	elseif a:0 == 1
@@ -38,10 +48,12 @@ function! s:GotoPackageSourceDir(...)
 endfunction
 
 function! s:CheckoutPackage(package)
+	call s:CheckInit()
 	echo system("cd " . shellescape(s:bob_base_path) . "; bob dev --checkout-only " . a:package)
 endfunction
 
 function! s:Dev(package,...)
+	call s:CheckInit()
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob dev " . a:package
 	if a:0 == 0
 		let &makeprg = l:command
