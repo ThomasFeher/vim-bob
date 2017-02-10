@@ -46,4 +46,16 @@ g:bob_config_path
          Path to configuration files (with file extension ".yaml") relative to
          the base path.
 
+==============================================================================
+
+Interaction with other plugins                   vim-bob-interaction
+
+CtrlP
+         Per default |CtrlP| will search the repository structure of the current
+         file.
+         In order to have all files of the current project (all files in `dev/`)
+         available to the search it is necessary to set an additional root
+         marker like "recipes", which should exist for sure.
+         This is achived via `let g:ctrlp_root_markers = ['recipes']` .
+
  vim:tw=78:et:ft=help:norl:
