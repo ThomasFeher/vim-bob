@@ -15,6 +15,11 @@ function! s:CheckInit()
 	endif
 endfunction
 
+function! s:Clean()
+	call s:CheckInit()
+	execute "!rm -r " . s:bob_base_path . "/dev/build " . s:bob_base_path . "/dev/dist"
+endfunction
+
 function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
 	return s:bob_package_list
 endfunction
@@ -71,6 +76,7 @@ function! s:Dev(package,...)
 endfunction
 
 command! BobInit call s:Init()
+command! BobClean call s:Clean()
 command! -nargs=? -complete=custom,s:PackageComplete BobGoto call s:GotoPackageSourceDir(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev(<f-args>)

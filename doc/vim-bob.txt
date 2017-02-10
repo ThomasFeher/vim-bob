@@ -33,6 +33,11 @@ Commands                                         *vim-bob-commands*
          subsequently the same command can be run via |:make| and error
          messages are parsed and gathered in the |quickfix| window.
 
+                                                 *vim-bob:BobClean*
+:BobClean
+         Deletes `dev/build` and `dev/dist` directories to force rebuilding of
+         all artifacts.
+
 ==============================================================================
 
 Configuration                                    *vim-bob-configuration*
