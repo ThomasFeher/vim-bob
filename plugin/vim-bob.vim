@@ -75,8 +75,44 @@ function! s:Dev(package,...)
 	make
 endfunction
 
+function! s:CreateCompileCommandsFile(package)
+	call s:CheckInit()
+	" get build paths to all modules necessary for building the package
+	let l:paths = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -r -f '{build}' " . a:package)
+	let l:paths = split(l:paths, "\n")
+	" replace the paths with the actual content of the compile commands file
+	" in that paths
+	let l:content = map(l:paths, 's:LoadCompileCommands(v:val . "/compile_commands.json")')
+	" remove the list operator around each individual compile command
+	" expression and add a comma at the end
+	let l:content = map(l:content, 'substitute(v:val, "\\[\\(.*\\)\\]", "\\1,", "")')
+	" join all expressions into one
+	let l:content = join(l:paths, "\n")
+	" add opening bracket at begin and replace last comma with closing bracket
+	" and finish with a newline
+	let l:content = substitute(l:content, "\\(.*\\),", "[\\1]\\n", "")
+	" get the source directory of the package, we want to put the resulting
+	" compile commands file there
+	let l:target_path = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' ". a:package)
+	" remove /workspace so we do not clutter the repository, and also remove
+	" trailing newline
+	let l:target_file = substitute(l:target_path, "workspace\\n$", "compile_commands.json", "")
+	execute "redir! > " . l:target_file
+		silent echo l:content
+	redir END
+endfunction
+
+" try to load the given file and return it's content
+function! s:LoadCompileCommands(file)
+	if empty(glob(a:file))
+		return ""
+	endif
+	return join(readfile(a:file), "\n")
+endfunction
+
 command! BobInit call s:Init()
 command! BobClean call s:Clean()
 command! -nargs=? -complete=custom,s:PackageComplete BobGoto call s:GotoPackageSourceDir(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev(<f-args>)
+command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobDevAndBuildCompilationDatabase call s:Dev(<f-args>) | call s:CreateCompileCommandsFile(<f-args>)
