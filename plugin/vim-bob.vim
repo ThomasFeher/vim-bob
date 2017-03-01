@@ -1,4 +1,7 @@
 let s:is_initialized = 0
+" get path of the current script, which is also the path to the YCM config
+" template file
+let s:script_path = expand('<sfile>:h')
 
 function! s:Init()
 	let s:bob_package_list = system("bob ls")
@@ -77,29 +80,17 @@ endfunction
 
 function! s:CreateCompileCommandsFile(package)
 	call s:CheckInit()
-	" get build paths to all modules necessary for building the package
-	let l:paths = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -r -f '{build}' " . a:package)
-	let l:paths = split(l:paths, "\n")
-	" replace the paths with the actual content of the compile commands file
-	" in that paths
-	let l:content = map(l:paths, 's:LoadCompileCommands(v:val . "/compile_commands.json")')
-	" remove the list operator around each individual compile command
-	" expression and add a comma at the end
-	let l:content = map(l:content, 'substitute(v:val, "\\[\\(.*\\)\\]", "\\1,", "")')
-	" join all expressions into one
-	let l:content = join(l:paths, "\n")
-	" add opening bracket at begin and replace last comma with closing bracket
-	" and finish with a newline
-	let l:content = substitute(l:content, "\\(.*\\),", "[\\1]\\n", "")
-	" get the source directory of the package, we want to put the resulting
-	" compile commands file there
-	let l:target_path = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' ". a:package)
-	" remove /workspace so we do not clutter the repository, and also remove
-	" trailing newline
-	let l:target_file = substitute(l:target_path, "workspace\\n$", "compile_commands.json", "")
-	execute "redir! > " . l:target_file
-		silent echo l:content
-	redir END
+	" get build path, which is also the path to the compilation database
+	let l:db_path = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . a:package)
+	let l:db_path = substitute(l:db_path, '/', '\\/', 'g')
+	let l:db_path = substitute(l:db_path, '\n', '', 'g')
+	" copy the template into the dev directory
+	tabnew
+	execute 'read' (s:script_path . '/ycm_extra_conf.py.template')
+	let l:subst_command = '%s/@db_path@/' . l:db_path . '\/'
+	execute(l:subst_command)
+	execute 'saveas!' (s:bob_base_path . '/dev/ycm_extra_conf.py')
+	tabclose
 endfunction
 
 " try to load the given file and return it's content
