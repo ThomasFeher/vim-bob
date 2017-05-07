@@ -33,6 +33,15 @@ Commands                                         *vim-bob-commands*
          subsequently the same command can be run via |:make| and error
          messages are parsed and gathered in the |quickfix| window.
 
+                                                 *vim-bob:BobDevAndBuildCompilationDatabase*
+:BobDevAndBuildCompilationDatabase [package] ([configuration] ([parameters]))
+         Same as |BobDev| but additionaly a ".ycm_extra_conf.py" file is
+         generated that loads the compilation database from the build.
+         This allows conveniently using |YouCompleteMe| in a Bob environment.
+         It is necessary to configure the build system to generate a
+         "compile_commands.json" file in the build directory. CMake will do
+         this if called with "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".
+
                                                  *vim-bob:BobClean*
 :BobClean
          Deletes `dev/build` and `dev/dist` directories to force rebuilding of
