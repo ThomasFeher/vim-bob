@@ -2,6 +2,11 @@ let s:is_initialized = 0
 
 function! s:Init()
 	let s:bob_package_list = system("bob ls")
+	if match(s:bob_package_list, "Parse error:") != -1
+		echo "vim-bob not initialized, output from bob ls:"
+		echo s:bob_package_list
+		return
+	endif
 	let s:bob_base_path = getcwd()
 	let s:bob_config_path = get(g:, 'bob_config_path', "")
 	let s:bob_config_path_abs = s:bob_base_path."/".s:bob_config_path
