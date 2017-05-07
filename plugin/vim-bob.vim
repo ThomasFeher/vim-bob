@@ -82,15 +82,21 @@ function! s:CreateCompileCommandsFile(package)
 	call s:CheckInit()
 	" get build path, which is also the path to the compilation database
 	let l:db_path = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . a:package)
+	" make the path absolute
+	let l:db_path = substitute(l:db_path, '^', s:bob_base_path.'/', '')
+	" escape slashes
 	let l:db_path = substitute(l:db_path, '/', '\\/', 'g')
+	" remove newlines (output of bob query-path contains a trailing newline)
 	let l:db_path = substitute(l:db_path, '\n', '', 'g')
 	" copy the template into the dev directory
 	tabnew
+	" insert the correct path to the compilation database file
 	execute 'read' (s:script_path . '/ycm_extra_conf.py.template')
 	let l:subst_command = '%s/@db_path@/' . l:db_path . '\/'
 	execute(l:subst_command)
-	execute 'saveas!' (s:bob_base_path . '/dev/ycm_extra_conf.py')
-	tabclose
+	execute 'saveas!' (s:bob_base_path . '/dev/.ycm_extra_conf.py')
+	" clean up the temporary buffer and tab
+	bw!
 endfunction
 
 " try to load the given file and return it's content

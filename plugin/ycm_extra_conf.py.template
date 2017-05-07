@@ -30,6 +30,8 @@
 
 import os
 import ycm_core
+import json
+import re
 
 # These are the compilation flags that will be used in case there's no
 # compilation database set (by default, one is not set).
@@ -134,15 +136,22 @@ def GetCompilationInfoForFile( filename ):
   # In case of a header file, we assume that if its path is in a source file's
   # flags then its flags are most likely relevant
   # TODO: this might not work if the paths in compile_commands.json are relative.
-  # TODO: in case of a header file, parse source files to find one including our
-  # header and get compilation flags from it.
   if IsHeaderFile( filename ):
-    with open(os.path.join(compilation_database_folder, 'compile_command.json'), 'r') as f:
+    with open(os.path.join(compilation_database_folder, 'compile_commands.json'), 'r') as f:
       jsonDatabase = json.load(f)
       for entry in jsonDatabase:
         if entry['command'].find(os.path.dirname(filename)) != -1:
           return database.GetCompilationInfoForFile(entry['file'])
-    logging.info("Could not find any compile unit that includes directory to %s" % filename)
+      print("Could not find any compile unit that includes directory to %s" % filename)
+      # since we couldn't find a match yet, try parsing the C files for include
+      # statements containing the header file
+      for entry in jsonDatabase:
+        with open(entry['file'], 'r') as handle:
+          file_content = handle.read()
+        if re.search('#include.*'+os.path.basename(filename), file_content):
+          print("using compile commands of %s because it includes %s" % (entry['file'],filename))
+          return database.GetCompilationInfoForFile(entry['file'])
+    print("giving up searching compile commands for %s" % filename)
     return None
   return database.GetCompilationInfoForFile( filename )
 
