@@ -151,7 +151,9 @@ def GetCompilationInfoForFile( filename ):
         if re.search('#include.*'+os.path.basename(filename), file_content):
           print("using compile commands of %s because it includes %s" % (entry['file'],filename))
           return database.GetCompilationInfoForFile(entry['file'])
-    print("giving up searching compile commands for %s" % filename)
+      print("Could not find any C file that includes file %s" % filename)
+      print("Using first compile unit as last resort")
+      return database.GetCompilationInfoForFile(jsonDatabase[0]['file'])
     return None
   return database.GetCompilationInfoForFile( filename )
 
