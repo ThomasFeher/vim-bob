@@ -78,7 +78,7 @@ function! s:Dev(package,...)
 	make
 endfunction
 
-function! s:CreateCompileCommandsFile(package)
+function! s:CreateCompileCommandsFile(package,...)
 	call s:CheckInit()
 	" get build path, which is also the path to the compilation database
 	let l:db_path = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . a:package)
