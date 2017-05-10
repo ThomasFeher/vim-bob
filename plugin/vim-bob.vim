@@ -88,9 +88,11 @@ function! s:Dev(package,...)
 	make
 endfunction
 
-function! s:CreateCompileCommandsFile(package,...)
+function! s:Ycm(package,...)
 	call s:CheckInit()
 	" get build path, which is also the path to the compilation database
+	" TODO generic function for building the bob command from the given
+	" parameters, as we could use the configuration here, too.
 	let l:db_path = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . a:package)
 	" make the path absolute
 	let l:db_path = substitute(l:db_path, '^', s:bob_base_path.'/', '')
@@ -123,4 +125,4 @@ command! -nargs=? -complete=custom,s:PackageComplete BobGoto call s:GotoPackageS
 command! -nargs=? -complete=custom,s:PackageComplete BobStatus call s:GetStatus(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev(<f-args>)
-command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobDevAndBuildCompilationDatabase call s:Dev(<f-args>) | call s:CreateCompileCommandsFile(<f-args>)
+command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
