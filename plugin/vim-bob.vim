@@ -70,7 +70,7 @@ function! s:GetStatus(package)
 	echo system("cd " . shellescape(s:bob_base_path) . "; bob status --recursive " . a:package)
 endfunction
 
-function! s:Dev(package,...)
+function! s:Dev(bang,package,...)
 	call s:CheckInit()
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob dev " . a:package
 	if a:0 == 0
@@ -85,7 +85,7 @@ function! s:Dev(package,...)
 		let &makeprg = l:command . l:config . " " . l:args
 	endif
 
-	make
+	execute 'make'.a:bang
 endfunction
 
 function! s:Ycm(package,...)
@@ -124,5 +124,5 @@ command! BobClean call s:Clean()
 command! -nargs=? -complete=custom,s:PackageComplete BobGoto call s:GotoPackageSourceDir(<f-args>)
 command! -nargs=? -complete=custom,s:PackageComplete BobStatus call s:GetStatus(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageComplete BobCheckout call s:CheckoutPackage(<f-args>)
-command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev(<f-args>)
+command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
