@@ -94,6 +94,12 @@ function! s:Ycm(package,...)
 	" TODO generic function for building the bob command from the given
 	" parameters, as we could use the configuration here, too.
 	let l:db_path = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . a:package)
+	" check if the build directory exist
+	" if it doesn't, the output will contain one '\n'
+	if strlen(l:db_path) < 2
+		echohl WarningMsg | echo a:package " has not been built yet." | echohl None
+		return
+	endif
 	" make the path absolute
 	let l:db_path = substitute(l:db_path, '^', s:bob_base_path.'/', '')
 	" escape slashes
