@@ -112,7 +112,7 @@ function! s:Ycm(package,...)
 	execute 'read' (s:script_path . '/ycm_extra_conf.py.template')
 	let l:subst_command = '%s/@db_path@/' . l:db_path . '\/'
 	execute(l:subst_command)
-	execute 'saveas!' (s:bob_base_path . '/dev/.ycm_extra_conf.py')
+	execute 'write!' (s:bob_base_path . '/dev/.ycm_extra_conf.py')
 	" clean up the temporary buffer and tab
 	bw!
 endfunction
