@@ -51,17 +51,13 @@ function! s:GotoPackageSourceDir(...)
 		execute "cd " . s:bob_base_path
 	elseif a:0 == 1
 		let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
-		if !empty(l:output)
-			"remove leading warning messages
-			let l:dir = split(output)[-1]
-			"check if last line is also a warning because the actual output is
-			"of query-path is empty
-			if empty(matchstr(l:dir, "^WARNING: .*$"))
-				execute "cd " . s:bob_base_path . "/" . l:dir
-				return
-			endif
+		let l:dir = s:RemoveWarnings(l:output)
+		echom l:dir
+		if !empty(l:dir)
+			execute "cd " . s:bob_base_path . "/" . l:dir
+		else
+			echom "package has no sources or is not checked out"
 		endif
-		echom "package has no sources or is not checked out"
 	else
 		echom "BobGoto takes at most one parameter"
 	endif
@@ -95,15 +91,26 @@ function! s:Dev(bang,package,...)
 	execute 'make'.a:bang
 endfunction
 
+function! s:RemoveWarnings(bob_output)
+	"Assumption: Only last line of output is the actual output, everything
+	"else is a warning
+	let l:output = split(a:bob_output, "\n")[-1]
+	"check if last line is also a warning because the actual output is
+	"of query-path is empty
+	if empty(matchstr(l:output, "^WARNING: .*$"))
+		return l:output
+	endif
+	"return nothing, because the output contained only warnings
+endfunction
+
 function! s:Ycm(package,...)
 	call s:CheckInit()
 	" get build path, which is also the path to the compilation database
 	" TODO generic function for building the bob command from the given
 	" parameters, as we could use the configuration here, too.
-	let l:db_path = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . a:package)
-	" check if the build directory exist
-	" if it doesn't, the output will contain one '\n'
-	if strlen(l:db_path) < 2
+	let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . a:package)
+	let l:db_path = s:RemoveWarnings(l:output)
+	if empty(l:db_path)
 		echohl WarningMsg | echo a:package " has not been built yet." | echohl None
 		return
 	endif
