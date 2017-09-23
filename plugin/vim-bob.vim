@@ -50,12 +50,18 @@ function! s:GotoPackageSourceDir(...)
 	if a:0 == 0
 		execute "cd " . s:bob_base_path
 	elseif a:0 == 1
-		let l:dir = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
-		if !empty(l:dir)
-			execute "cd " . s:bob_base_path . "/" . l:dir
-		else
-			echom "package has no sources or is not checked out"
+		let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
+		if !empty(l:output)
+			"remove leading warning messages
+			let l:dir = split(output)[-1]
+			"check if last line is also a warning because the actual output is
+			"of query-path is empty
+			if empty(matchstr(l:dir, "^WARNING: .*$"))
+				execute "cd " . s:bob_base_path . "/" . l:dir
+				return
+			endif
 		endif
+		echom "package has no sources or is not checked out"
 	else
 		echom "BobGoto takes at most one parameter"
 	endif
