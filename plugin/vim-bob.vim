@@ -2,6 +2,7 @@ let s:is_initialized = 0
 " get path of the current script, which is also the path to the YCM config
 " template file
 let s:script_path = expand('<sfile>:h')
+let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
 
 function! s:Init()
 	let s:bob_package_list = system("bob ls")
@@ -40,7 +41,7 @@ function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
 	elseif len(l:command_list) < 4
 		return join(s:config_names, "\n")
 	else
-		return ""
+		return join(s:additional_params, "\n")
 	endif
 endfunction
 
