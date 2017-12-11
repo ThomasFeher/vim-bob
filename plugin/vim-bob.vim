@@ -97,7 +97,7 @@ function! s:RemoveWarnings(bob_output)
 	let l:output = split(a:bob_output, "\n")[-1]
 	"check if last line is also a warning because the actual output is
 	"of query-path is empty
-	if empty(matchstr(l:output, "^WARNING: .*$"))
+	if l:output !~ "^WARNING: .*$" && l:output !~ "^INFO: .*$" && l:output !~ "^See .*$"
 		return l:output
 	endif
 	"return nothing, because the output contained only warnings
