@@ -11,6 +11,10 @@ function! s:Init()
 		echo s:bob_package_list
 		return
 	endif
+	while s:bob_package_list =~ "^INFO:.*\n" || s:bob_package_list =~ "^See .*\n"
+		let s:bob_package_list = substitute(s:bob_package_list, 'INFO:.\{-}\n', '', 'g')
+		let s:bob_package_list = substitute(s:bob_package_list, 'See .\{-}\n', '', 'g')
+	endwhile
 	let s:bob_base_path = getcwd()
 	let s:bob_config_path = get(g:, 'bob_config_path', "")
 	let s:bob_config_path_abs = s:bob_base_path."/".s:bob_config_path
