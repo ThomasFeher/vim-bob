@@ -74,7 +74,7 @@ endfunction
 
 function! s:GetStatus(package)
 	call s:CheckInit()
-	echo system("cd " . shellescape(s:bob_base_path) . "; bob status --recursive " . a:package)
+	echo system("cd " . shellescape(s:bob_base_path) . "; bob status --verbose --recursive " . a:package)
 endfunction
 
 function! s:Dev(bang,package,...)
