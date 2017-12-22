@@ -119,9 +119,9 @@ function! s:Ycm(package,...)
 		return
 	endif
 	" make the path absolute
-	let l:db_path_subst = substitute(l:db_path, '^', s:bob_base_path.'/', '')
+	let l:db_path_abs = substitute(l:db_path, '^', s:bob_base_path.'/', '')
 	" escape slashes
-	let l:db_path_subst = substitute(l:db_path_subst, '/', '\\/', 'g')
+	let l:db_path_subst = substitute(l:db_path_abs, '/', '\\/', 'g')
 	" remove newlines (output of bob query-path contains a trailing newline)
 	let l:db_path_subst = substitute(l:db_path_subst, '\n', '', 'g')
 	" copy the template into the dev directory
@@ -130,11 +130,11 @@ function! s:Ycm(package,...)
 	execute 'read' (s:script_path . '/ycm_extra_conf.py.template')
 	let l:subst_command = '%s/@db_path@/' . l:db_path_subst . '\/'
 	execute(l:subst_command)
-	execute 'write!' (s:bob_base_path . '/dev/.ycm_extra_conf.py')
+	execute 'silent! write!' (s:bob_base_path . '/dev/.ycm_extra_conf.py')
 	" clean up the temporary buffer and tab
 	bw!
 	"copy the compilation database for chromatica
-	let fl = readfile(l:db_path."/compile_commands.json", "b")
+	let fl = readfile(l:db_path_abs."/compile_commands.json", "b")
 	call writefile(fl, s:bob_base_path."/dev/compile_commands.json", "b")
 endfunction
 
