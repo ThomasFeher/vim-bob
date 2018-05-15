@@ -96,6 +96,10 @@ function! s:Dev(bang,package,...)
 endfunction
 
 function! s:RemoveWarnings(bob_output)
+	if empty(a:bob_output)
+		return a:bob_output
+	endif
+
 	"Assumption: Only last line of output is the actual output, everything
 	"else is a warning
 	let l:output = split(a:bob_output, "\n")[-1]
