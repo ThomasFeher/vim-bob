@@ -4,17 +4,23 @@ let s:is_initialized = 0
 let s:script_path = expand('<sfile>:h')
 let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
 
+function! s:RemoveInfoMessages(text)
+	let l:text = a:text
+	let l:text = substitute(l:text, "INFO:.\\{-}\n", '', 'g')
+	let l:text = substitute(l:text, "See .\\{-}\n", '', 'g')
+	return l:text
+endfunction
+
 function! s:Init()
 	let s:bob_package_list = system("bob ls")
+	let s:bob_package_tree_list = system("bob ls -pr")
 	if match(s:bob_package_list, "Parse error:") != -1
 		echo "vim-bob not initialized, output from bob ls:"
 		echo s:bob_package_list
 		return
 	endif
-	while s:bob_package_list =~ "^INFO:.*\n" || s:bob_package_list =~ "^See .*\n"
-		let s:bob_package_list = substitute(s:bob_package_list, 'INFO:.\{-}\n', '', 'g')
-		let s:bob_package_list = substitute(s:bob_package_list, 'See .\{-}\n', '', 'g')
-	endwhile
+	let s:bob_package_list = s:RemoveInfoMessages(s:bob_package_list)
+	let s:bob_package_tree_list = s:RemoveInfoMessages(s:bob_package_tree_list)
 	let s:bob_base_path = getcwd()
 	let s:bob_config_path = get(g:, 'bob_config_path', "")
 	let s:bob_config_path_abs = s:bob_base_path."/".s:bob_config_path
@@ -37,11 +43,15 @@ function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
 	return s:bob_package_list
 endfunction
 
+function! s:PackageTreeComplete(ArgLead, CmdLine, CursorPos)
+	return join(filter(split(s:bob_package_tree_list, "\n"), {idx, elem -> elem =~ '^' . a:ArgLead . '[^/]*$'}), "\n")
+endfunction
+
 function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
 	let l:command_list = split(a:CmdLine," ", 1)
 	if len(l:command_list) < 3
 		" first argument
-		return s:bob_package_list
+		return s:PackageComplete(a:ArgLead, a:CmdLine, a:CursorPos)
 	elseif len(l:command_list) < 4
 		return join(s:config_names, "\n")
 	else
@@ -152,8 +162,8 @@ endfunction
 
 command! BobInit call s:Init()
 command! BobClean call s:Clean()
-command! -nargs=? -complete=custom,s:PackageComplete BobGoto call s:GotoPackageSourceDir(<f-args>)
-command! -nargs=? -complete=custom,s:PackageComplete BobStatus call s:GetStatus(<f-args>)
-command! -nargs=1 -complete=custom,s:PackageComplete BobCheckout call s:CheckoutPackage(<f-args>)
+command! -nargs=? -complete=custom,s:PackageTreeComplete BobGoto call s:GotoPackageSourceDir(<f-args>)
+command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
+command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
