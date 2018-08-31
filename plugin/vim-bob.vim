@@ -59,16 +59,21 @@ function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
 	endif
 endfunction
 
-function! s:GotoPackageSourceDir(...)
+function! s:GotoPackageSourceDir(bang, ...)
 	call s:CheckInit()
+	if a:bang
+		let l:command = "cd "
+	else
+		let l:command = "lcd "
+	endif
 	if a:0 == 0
-		execute "cd " . s:bob_base_path
+		execute l:command . s:bob_base_path
 	elseif a:0 == 1
 		let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
 		let l:dir = s:RemoveWarnings(l:output)
 		echom l:dir
 		if !empty(l:dir)
-			execute "cd " . s:bob_base_path . "/" . l:dir
+			execute l:command . s:bob_base_path . "/" . l:dir
 		else
 			echom "package has no sources or is not checked out"
 		endif
@@ -162,7 +167,7 @@ endfunction
 
 command! BobInit call s:Init()
 command! BobClean call s:Clean()
-command! -nargs=? -complete=custom,s:PackageTreeComplete BobGoto call s:GotoPackageSourceDir(<f-args>)
+command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGoto call s:GotoPackageSourceDir("<bang>", <f-args>)
 command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)

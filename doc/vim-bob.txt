@@ -21,8 +21,11 @@ Commands                                         *vim-bob-commands*
 
                                                  *vim-bob:BobGoto*
 :BobGoto [package]
-         Changes the current working directory to be the source
+         Changes the current working directory of the buffer to be the source
          directory of the given [package].
+
+:BobGoto! [package]
+          Like ":BobGoto" but sets the current working directory globally.
 
                                                  *vim-bob:BobDev*
 :BobDev [package] ([configuration] ([parameters]))
