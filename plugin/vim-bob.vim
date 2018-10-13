@@ -13,14 +13,14 @@ endfunction
 
 function! s:Init()
 	let s:bob_package_list = system("bob ls")
-	let s:bob_package_tree_list = system("bob ls -pr")
+	let g:bob_package_tree_list = system("bob ls -pr")
 	if match(s:bob_package_list, "Parse error:") != -1
 		echo "vim-bob not initialized, output from bob ls:"
 		echo s:bob_package_list
 		return
 	endif
 	let s:bob_package_list = s:RemoveInfoMessages(s:bob_package_list)
-	let s:bob_package_tree_list = s:RemoveInfoMessages(s:bob_package_tree_list)
+	let g:bob_package_tree_list = s:RemoveInfoMessages(g:bob_package_tree_list)
 	let s:bob_base_path = getcwd()
 	let s:bob_config_path = get(g:, 'bob_config_path', "")
 	let s:bob_config_path_abs = s:bob_base_path."/".s:bob_config_path
@@ -44,7 +44,7 @@ function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
 endfunction
 
 function! s:PackageTreeComplete(ArgLead, CmdLine, CursorPos)
-	return join(filter(split(s:bob_package_tree_list, "\n"), {idx, elem -> elem =~ '^' . a:ArgLead . '[^/]*$'}), "\n")
+	return join(filter(split(g:bob_package_tree_list, "\n"), {idx, elem -> elem =~ '^' . a:ArgLead . '[^/]*$'}), "\n")
 endfunction
 
 function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
@@ -56,6 +56,48 @@ function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
 		return join(s:config_names, "\n")
 	else
 		return join(s:additional_params, "\n")
+	endif
+endfunction
+
+function! s:GotoPackageSourceDirX(bang, ...)
+    call ctrlp#init(ctrlp#bob#id())
+endfunction
+
+function! s:ConfigAndOptionsComplete(ArgLead, CmdLine, CursorPos)
+	let l:command_list = split(a:CmdLine," ", 1)
+	if len(l:command_list) < 3
+		" first argument -> package
+		let g:ctrlp_open_func = 
+		CtrlPLine l:buf_name
+	elseif len(l:command_list) < 4
+		" second argument -> configuration
+		return join(s:config_names, "\n")
+	else
+		" third and subsequent arguments -> additional parameters
+		return join(s:additional_params, "\n")
+	endif
+endfunction
+
+function! s:GotoPackageSourceDir_(bang, ...)
+	call s:CheckInit()
+	if a:bang
+		let l:command = "cd "
+	else
+		let l:command = "lcd "
+	endif
+	if a:0 == 0
+		execute l:command . s:bob_base_path
+	elseif a:0 == 1
+		let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
+		let l:dir = s:RemoveWarnings(l:output)
+		echom l:dir
+		if !empty(l:dir)
+			execute l:command . s:bob_base_path . "/" . l:dir
+		else
+			echom "package has no sources or is not checked out"
+		endif
+	else
+		echom "BobGoto takes at most one parameter"
 	endif
 endfunction
 
@@ -172,3 +214,7 @@ command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetSta
 command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
+
+" experimental CtrlP integration
+"command! -bang -nargs=? BobGotoX call s:GotoPackageSourceDirX("<bang>", <f-args>)
+command! -bang -nargs=? BobGotoX call ctrlp#init(ctrlp#bob#id())
