@@ -3,6 +3,9 @@ let s:is_initialized = 0
 " template file
 let s:script_path = expand('<sfile>:h')
 let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
+if (!exists("g:bob_show_completion_window"))
+	let g:vimbob_show_completion_window = 0
+endif
 
 function! s:RemoveInfoMessages(text)
 	let l:text = a:text
@@ -44,6 +47,13 @@ function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
 endfunction
 
 function! s:PackageTreeComplete(ArgLead, CmdLine, CursorPos)
+	if g:bob_show_completion_window
+		botright new BobCompletion
+		let l:list = filter(split(s:bob_package_tree_list, "\n"), 'v:val =~ "^'.a:ArgLead.'"')
+		let l:failed = append(0, l:list)
+		redraw
+		bwipeout! BobCompletion
+	endif
 	return join(filter(split(s:bob_package_tree_list, "\n"), {idx, elem -> elem =~ '^' . a:ArgLead . '[^/]*$'}), "\n")
 endfunction
 

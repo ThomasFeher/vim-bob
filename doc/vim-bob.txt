@@ -58,6 +58,11 @@ g:bob_config_path
          Path to configuration files (with file extension ".yaml") relative to
          the base path.
 
+g:bob_show_completion_window
+         Shows an additional completion window when autocompleting packages.
+         This can be useful for long package names which can become hard to
+         view in the wildmenu.
+
 ==============================================================================
 
 Interaction with other plugins                   vim-bob-interaction
