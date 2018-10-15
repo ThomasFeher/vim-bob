@@ -5,6 +5,22 @@ URL:    https://github.com/ThomasFeher/vim-bob
 
 ==============================================================================
 
+Workflow                                         *vim-bob-workflow*
+
+The usual workflow is as follows:
+* Change directory into the recipe repository.
+* Start vim.
+* Run |:BobInit| to initialize vim-bob.
+* Run |:BobProject| to define the project to work on. This will build the
+  current state of the project and setup configuration for the YouCompleteMe
+  plugin.
+* Use |:BobGoto| to set the working path to the root directory of the
+  specified package.
+* Start editing files of that package.
+* Run |:make| to rebuild the project.
+
+==============================================================================
+
 Commands                                         *vim-bob-commands*
 
                                                  *vim-bob:BobInit*
