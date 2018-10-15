@@ -43,6 +43,14 @@ function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
 	return s:bob_package_list
 endfunction
 
+function! s:ProjectPackageComplete(ArgLead, CmdLine, CursorPos)
+	if exists("s:current_project_package_list")
+		return join(filter(s:current_project_package_list, {idx, elem -> elem =~ '^' . a:ArgLead}), "\n")
+	else
+		return s:PackageTreeComplete(a:ArgLead, a:CmdLine, a:CursorPos)
+	endif
+endfunction
+
 function! s:PackageTreeComplete(ArgLead, CmdLine, CursorPos)
 	return join(filter(split(s:bob_package_tree_list, "\n"), {idx, elem -> elem =~ '^' . a:ArgLead . '[^/]*$'}), "\n")
 endfunction
@@ -209,7 +217,8 @@ endfunction
 
 command! BobInit call s:Init()
 command! BobClean call s:Clean()
-command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGoto call s:GotoPackageSourceDir("<bang>", <f-args>)
+command! -bang -nargs=? -complete=custom,s:ProjectPackageComplete BobGoto call s:GotoPackageSourceDir("<bang>", <f-args>)
+command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGotoAll call s:GotoPackageSourceDir("<bang>", <f-args>)
 command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)

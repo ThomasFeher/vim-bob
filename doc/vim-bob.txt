@@ -23,9 +23,21 @@ Commands                                         *vim-bob-commands*
 :BobGoto [package]
          Changes the current working directory of the buffer to be the source
          directory of the given [package].
+         Provided for auto-completion:
+         * dependencies of current project exclusively
+         * non-root recipes
 
 :BobGoto! [package]
           Like ":BobGoto" but sets the current working directory globally.
+
+                                                 *vim-bob:BobGotoAll*
+:BobGotoAll [package]
+         Changes the current working directory of the buffer to be the source
+         directory of the given [package].
+         Provides all available root recipes for auto-completion.
+
+:BobGotoAll! [package]
+          Like ":BobGotoAll" but sets the current working directory globally.
 
                                                  *vim-bob:BobDev*
 :BobDev ([package] ([configuration] ([parameters])))
