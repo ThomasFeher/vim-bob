@@ -92,18 +92,60 @@ function! s:GetStatus(package)
 	echo system("cd " . shellescape(s:bob_base_path) . "; bob status --verbose --recursive " . a:package)
 endfunction
 
-function! s:Dev(bang,package,...)
+function! s:Project(bang, package, ...)
 	call s:CheckInit()
+	call s:DevImpl(a:bang, a:package, a:000)
+
+	" generate list of packages needed by that root package
+	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --all --recursive " . a:package)
+	let l:list = s:RemoveInfoMessages(l:list)
+	let l:list = split(l:list, '\n')
+	" remove the ascii tree
+	let l:list = map(l:list, {key, val -> substitute(val, '.* \(\S*\)$', '\1', '')})
+	let l:list = sort(l:list)
+	let l:list = uniq(l:list)
+	let s:current_project_package_list = l:list
+	let s:current_project_name = a:package
+	let s:current_project_options = a:000
+
+	" generate configuration for YouCompleteMe
+	call s:Ycm(a:package)
+endfunction
+
+function! s:Dev(bang, ...)
+	call s:CheckInit()
+	if (a:0 == 0)
+		if exists('s:current_project_name')
+			let l:package = s:current_project_name
+			let l:optionals = s:current_project_options
+		else
+			echom 'error: provide a package name or run :BobProject first'
+			return
+		endif
+	else
+		let l:package = a:1
+		let l:optionals = copy(a:000)
+		remove(l:optionals, 0)
+	endif
+	call s:DevImpl(a:bang, l:package, l:optionals)
+endfunction
+
+" we need this extra function to be able to forward optional parameters from
+" other functions as well as comands. Forwarding from functions does work with
+" a list of arguments exclusively, whereas commands provide optional arguments
+" as separte variables (a:0, a:1, etc.).
+function! s:DevImpl(bang, package, optionals)
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob dev " . a:package
-	if a:0 == 0
+	echo a:optionals
+	if len(a:optionals) == 0
 		let &makeprg = l:command
 	else
-		let l:config = " -c " . s:bob_config_path . "/" . a:1
+		let l:config = " -c " . s:bob_config_path . "/" . a:optionals[0]
 		let &makeprg = l:command . l:config
 	endif
 
-	if a:0 > 1
-		let l:args = join(a:000[1:-1])
+	if len(a:optionals) > 1
+		let l:args = join(a:optionals[1:-1])
 		let &makeprg = l:command . l:config . " " . l:args
 	endif
 
@@ -171,4 +213,5 @@ command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGoto call s:Go
 command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
+command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobProject call s:Project("<bang>",<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)

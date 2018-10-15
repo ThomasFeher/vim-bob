@@ -28,13 +28,29 @@ Commands                                         *vim-bob-commands*
           Like ":BobGoto" but sets the current working directory globally.
 
                                                  *vim-bob:BobDev*
-:BobDev [package] ([configuration] ([parameters]))
+:BobDev ([package] ([configuration] ([parameters])))
          Build [package] with [configuration] in development mode.
          Runs "bob dev [package] -c <configuration-dir>/[configuration]
          [parameters]"
+         When called with no arguments the package, configuration and
+         parameters are built that were specified with the last call of
+         |:BobProject|.
          Additionally sets |makeprg| for the current file, so that
          subsequently the same command can be run via |:make| and error
          messages are parsed and gathered in the |quickfix| window.
+
+                                                 *vim-bob:BobDevAndBuildCompilationDatabase*
+:BobProject [package] ([configuration] ([parameters]))
+         Same as |BobDev| but additionally sets the current project to that
+         package. That means that |:BobGoto| will provide only dependencies of
+         that package for auto-completion, but opposing to |:BobGotoAll| it
+         will also provide non-root recipes.
+         Additionaly a ".ycm_extra_conf.py" file is generated that loads the
+         compilation database from the build.  This allows conveniently using
+         |YouCompleteMe| in a Bob environment.  It is necessary to configure
+         the build system to generate a "compile_commands.json" file in the
+         build directory. CMake will do this if called with
+         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".
 
                                                  *vim-bob:BobClean*
 :BobClean
