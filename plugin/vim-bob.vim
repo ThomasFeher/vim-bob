@@ -133,7 +133,7 @@ function! s:Dev(bang, ...)
 	else
 		let l:package = a:1
 		let l:optionals = copy(a:000)
-		remove(l:optionals, 0)
+		call remove(l:optionals, 0)
 	endif
 	call s:DevImpl(a:bang, l:package, l:optionals)
 endfunction
