@@ -105,13 +105,9 @@ function! s:Project(bang, package, ...)
 	call s:DevImpl(a:bang, a:package, a:000)
 
 	" generate list of packages needed by that root package
-	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --all --recursive " . a:package)
+	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
-	" remove the ascii tree
-	let l:list = map(l:list, {key, val -> substitute(val, '.* \(\S*\)$', '\1', '')})
-	let l:list = sort(l:list)
-	let l:list = uniq(l:list)
 	let s:current_project_package_list = l:list
 	let s:current_project_name = a:package
 	let s:current_project_options = a:000
