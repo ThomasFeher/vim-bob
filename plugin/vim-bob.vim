@@ -7,6 +7,7 @@ let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
 function! s:RemoveInfoMessages(text)
 	let l:text = a:text
 	let l:text = substitute(l:text, "INFO:.\\{-}\n", '', 'g')
+	let l:text = substitute(l:text, "WARNING:.\\{-}\n", '', 'g')
 	let l:text = substitute(l:text, "See .\\{-}\n", '', 'g')
 	return l:text
 endfunction
