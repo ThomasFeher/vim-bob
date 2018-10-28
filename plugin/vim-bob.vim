@@ -45,8 +45,8 @@ function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
 endfunction
 
 function! s:ProjectPackageComplete(ArgLead, CmdLine, CursorPos)
-	if exists("s:current_project_package_list")
-		return join(filter(s:current_project_package_list, {idx, elem -> elem =~ '^' . a:ArgLead}), "\n")
+	if exists("s:project_package_list")
+		return join(filter(s:project_package_list, {idx, elem -> elem =~ '^' . a:ArgLead}), "\n")
 	else
 		return s:PackageTreeComplete(a:ArgLead, a:CmdLine, a:CursorPos)
 	endif
@@ -109,9 +109,9 @@ function! s:Project(bang, package, ...)
 	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
-	let s:current_project_package_list = l:list
-	let s:current_project_name = a:package
-	let s:current_project_options = a:000
+	let s:project_package_list = l:list
+	let s:project_name = a:package
+	let s:project_options = a:000
 
 	" generate configuration for YouCompleteMe
 	call s:Ycm(a:package)
@@ -120,9 +120,9 @@ endfunction
 function! s:Dev(bang, ...)
 	call s:CheckInit()
 	if (a:0 == 0)
-		if exists('s:current_project_name')
-			let l:package = s:current_project_name
-			let l:optionals = s:current_project_options
+		if exists('s:project_name')
+			let l:package = s:project_name
+			let l:optionals = s:project_options
 		else
 			echom 'error: provide a package name or run :BobProject first'
 			return
