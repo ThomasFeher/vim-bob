@@ -93,6 +93,19 @@ g:bob_config_path
          Path to configuration files (with file extension ".yaml") relative to
          the base path.
 
+g:bob_reduce_goto_list
+         Default: 1
+         The list of possible packages for |:BobGoto| is reduced to show only
+         the leaf package instead of the complete tree from the project root
+         package. As this could result in duplicates when different packages
+         depend on the same package, these duplicate entries are removed as
+         well. This is only performed if the source directory for all variants
+         are equal, otherwise the variants will remain with their full package
+         path.
+         This reduces the number of elements and also their size
+         significantly, which eases finding the correct one during command
+         completion.
+
 ==============================================================================
 
 Interaction with other plugins                   vim-bob-interaction

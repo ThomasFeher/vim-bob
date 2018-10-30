@@ -3,6 +3,9 @@ let s:is_initialized = 0
 " template file
 let s:script_path = expand('<sfile>:h')
 let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
+if !exists('g:bob_reduce_goto_list')
+	let g:bob_reduce_goto_list = 1
+endif
 
 function! s:RemoveInfoMessages(text)
 	let l:text = a:text
@@ -45,8 +48,8 @@ function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
 endfunction
 
 function! s:ProjectPackageComplete(ArgLead, CmdLine, CursorPos)
-	if exists("s:project_package_list")
-		return join(filter(s:project_package_list, {idx, elem -> elem =~ '^' . a:ArgLead}), "\n")
+	if exists("s:project_package_src_dirs_reduced")
+		return join(sort(keys(s:project_package_src_dirs_reduced)), "\n")
 	else
 		return s:PackageTreeComplete(a:ArgLead, a:CmdLine, a:CursorPos)
 	endif
@@ -78,14 +81,22 @@ function! s:GotoPackageSourceDir(bang, ...)
 	if a:0 == 0
 		execute l:command . s:bob_base_path
 	elseif a:0 == 1
-		let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
-		let l:dir = s:RemoveWarnings(l:output)
-		echom l:dir
-		if !empty(l:dir)
-			execute l:command . s:bob_base_path . "/" . l:dir
+		if exists('s:project_package_src_dirs_reduced')
+			" in project mode, we already cached the source directories
+			let l:dir = s:project_package_src_dirs_reduced[a:1]
 		else
-			echom "package has no sources or is not checked out"
+			let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
+			let l:dir = s:RemoveWarnings(l:output)
+			if empty(l:dir)
+				" this check should only be necessary when not in project
+				" mode, because project mode builds everything during
+				" initialization which ensures that package source dirs exist
+				echom "package has no sources or is not checked out"
+				return
+			endif
 		endif
+		echom l:dir
+		execute l:command . s:bob_base_path . "/" . l:dir
 	else
 		echom "BobGoto takes at most one parameter"
 	endif
@@ -106,10 +117,58 @@ function! s:Project(bang, package, ...)
 	call s:DevImpl(a:bang, a:package, a:000)
 
 	" generate list of packages needed by that root package
+	" TODO use provided configuration for bob ls
 	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
-	let s:project_package_list = l:list
+	let s:project_package_src_dirs = {}
+	for l:package in l:list
+		" TODO use provided configuration for bob query-path
+		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . l:package
+		" the path contains a trailing newline, which is removed by
+		" substitute()
+		let s:project_package_src_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
+	endfor
+	let l:package_long_names = keys(s:project_package_src_dirs)
+	let l:map_short_to_long_names = {}
+	if g:bob_reduce_goto_list
+		" generate map of all short packages names associated to a list of
+		" according long packages names
+		for l:long_name in l:package_long_names
+			let l:short_name = substitute(l:long_name, "^.*\/", "", "")
+			if has_key(l:map_short_to_long_names, l:short_name)
+				let l:map_short_to_long_names[l:short_name] += [l:long_name]
+			else
+				let l:map_short_to_long_names[l:short_name] = [l:long_name]
+			endif
+		endfor
+		" check if the directories are equal for each short name package
+		let s:project_package_src_dirs_reduced = {}
+		for l:short_name in keys(l:map_short_to_long_names)
+			let l:all_dirs = []
+			for l:long_name in l:map_short_to_long_names[l:short_name]
+				let l:all_dirs += [s:project_package_src_dirs[l:long_name]]
+			endfor
+			if len(uniq(sort(l:all_dirs))) == 1
+				" all directories are equal, therefor store only the short
+				" name and the according directory
+				let s:project_package_src_dirs_reduced[l:short_name] = s:project_package_src_dirs[l:map_short_to_long_names[l:short_name][0]]
+			else
+				" at least one package has a different directory, therefor
+				" store all variants with there complete package name and the
+				" according directories
+				for l:long_name in l:map_short_to_long_names[l:short_name]
+					let s:project_package_src_dirs_reduced[l:long_name] = s:project_package_src_dirs[l:long_name]
+				endfor
+			endif
+		endfor
+	else
+		let s:project_package_src_dirs_reduced = s:project_package_src_dirs
+	endif
+	" TODO add the root recipe to the lists
+	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:package
+	" the path contains a trailing newline, which is removed by substitute()
+	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
 	let s:project_name = a:package
 	let s:project_options = a:000
 
