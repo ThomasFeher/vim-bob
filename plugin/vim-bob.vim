@@ -3,6 +3,7 @@ let s:is_initialized = 0
 " template file
 let s:script_path = expand('<sfile>:h')
 let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
+let s:project_config = ''
 if !exists('g:bob_reduce_goto_list')
 	let g:bob_reduce_goto_list = 1
 endif
@@ -171,6 +172,11 @@ function! s:Project(bang, package, ...)
 	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
 	let s:project_name = a:package
 	let s:project_options = a:000
+	if a:0 == 0
+		let s:project_config = ''
+	else
+		let s:project_config = ' -c ' . s:bob_config_path . '/' . a:1
+	endif
 
 	" generate configuration for YouCompleteMe
 	call s:Ycm(a:package)
@@ -237,7 +243,7 @@ function! s:Ycm(package,...)
 	" get build path, which is also the path to the compilation database
 	" TODO generic function for building the bob command from the given
 	" parameters, as we could use the configuration here, too.
-	let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . a:package)
+	let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . a:package)
 	let l:db_path = s:RemoveWarnings(l:output)
 	if empty(l:db_path)
 		echohl WarningMsg | echo a:package " has not been built yet." | echohl None
