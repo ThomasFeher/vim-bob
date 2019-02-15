@@ -179,7 +179,7 @@ function! s:Project(bang, package, ...)
 	else
 		let s:project_package_src_dirs_reduced = s:project_package_src_dirs
 	endif
-	" TODO add the root recipe to the lists
+	" add the root recipe to the lists
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:package
 	" the path contains a trailing newline, which is removed by substitute()
 	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
