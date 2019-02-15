@@ -117,6 +117,19 @@ function! s:Project(bang, package, ...)
 	call s:CheckInit()
 	call s:DevImpl(a:bang, a:package, a:000)
 
+	" set already known project properties globally, so they are usable
+	" subsequently
+	" TODO use local variable so we can restore the global state in case an
+	"      error occurs subsequently which does not allow proper loading of
+	"      the project
+	let s:project_name = a:package
+	let s:project_options = a:000
+	if a:0 == 0
+		let s:project_config = ''
+	else
+		let s:project_config = ' -c ' . s:bob_config_path . '/' . a:1
+	endif
+
 	" generate list of packages needed by that root package
 	" TODO use provided configuration for bob ls
 	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . a:package)
@@ -170,13 +183,6 @@ function! s:Project(bang, package, ...)
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:package
 	" the path contains a trailing newline, which is removed by substitute()
 	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
-	let s:project_name = a:package
-	let s:project_options = a:000
-	if a:0 == 0
-		let s:project_config = ''
-	else
-		let s:project_config = ' -c ' . s:bob_config_path . '/' . a:1
-	endif
 
 	" generate configuration for YouCompleteMe
 	call s:Ycm(a:package)
