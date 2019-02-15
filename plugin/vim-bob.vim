@@ -264,9 +264,13 @@ function! s:Ycm(package,...)
 	execute 'silent! write!' (s:bob_base_path . '/dev/.ycm_extra_conf.py')
 	" clean up the temporary buffer and tab
 	bw!
-	"copy the compilation database for chromatica
-	let fl = readfile(l:db_path_abs."/compile_commands.json", "b")
-	call writefile(fl, s:bob_base_path."/dev/compile_commands.json", "b")
+	if filereadable(l:db_path_abs."/compile_commands.json")
+		"copy the compilation database for chromatica
+		let fl = readfile(l:db_path_abs."/compile_commands.json", "b")
+		call writefile(fl, s:bob_base_path."/dev/compile_commands.json", "b")
+	else
+		echom "No compile_commands.json file found! Plugins that rely on it may not work with that Bob project."
+	endif
 endfunction
 
 " try to load the given file and return it's content
