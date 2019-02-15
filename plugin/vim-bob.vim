@@ -131,14 +131,12 @@ function! s:Project(bang, package, ...)
 	endif
 
 	" generate list of packages needed by that root package
-	" TODO use provided configuration for bob ls
-	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . a:package)
+	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . s:project_config . " " . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
 	let s:project_package_src_dirs = {}
 	for l:package in l:list
-		" TODO use provided configuration for bob query-path
-		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . l:package
+		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . " " . l:package
 		" the path contains a trailing newline, which is removed by
 		" substitute()
 		let s:project_package_src_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
