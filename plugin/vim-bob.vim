@@ -135,6 +135,7 @@ function! s:Project(bang, package, ...)
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
 	let s:project_package_src_dirs = {}
+	echo "gather source paths …"
 	for l:package in l:list
 		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . " " . l:package
 		" the path contains a trailing newline, which is removed by
@@ -146,6 +147,7 @@ function! s:Project(bang, package, ...)
 	if g:bob_reduce_goto_list
 		" generate map of all short packages names associated to a list of
 		" according long packages names
+		echo "generate short package names …"
 		for l:long_name in l:package_long_names
 			let l:short_name = substitute(l:long_name, "^.*\/", "", "")
 			if has_key(l:map_short_to_long_names, l:short_name)
@@ -182,7 +184,7 @@ function! s:Project(bang, package, ...)
 	" the path contains a trailing newline, which is removed by substitute()
 	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
 
-	" generate configuration for YouCompleteMe
+	echo "generate configuration for YouCompleteMe …"
 	call s:Ycm(a:package)
 endfunction
 
