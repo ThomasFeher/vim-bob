@@ -184,6 +184,30 @@ function! s:Project(bang, package, ...)
 	" the path contains a trailing newline, which is removed by substitute()
 	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
 
+	echo "gather build paths …"
+	let s:project_package_build_dirs = {}
+	for l:package in l:list
+		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . s:project_config . " " . l:package
+		" the path contains a trailing newline, which is removed by
+		" substitute()
+		let s:project_package_build_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
+	endfor
+	" The long package names are used for specifying the build directories,
+	" because in theory a package could be build multiple times with different
+	" build-flags and therefor in different build folders, because its
+	" dependent package introduced different build flags.
+	" That doesn't really makes sense for C-packages linked into the same
+	" application because it could introduced different symbols with equal
+	" names multiple times.
+	" On the other hand we want to stay as generic as possible. There could be
+	" a project generating multiple applications or libraries for example.
+	" So for comomn cases we will get a compilation databases that contains
+	" redundant entries. Which should be no problem for the common, single
+	" target, use case. In the multi-target use case we have a problem anyway
+	" because we would have to generate multiple compilation databases, but it
+	" is not possible to determine for which target a source file should be
+	" checked if it is used in multiple targets.
+
 	echo "generate configuration for YouCompleteMe …"
 	call s:Ycm(a:package)
 endfunction
@@ -269,14 +293,40 @@ function! s:Ycm(package,...)
 	execute(l:subst_command)
 	execute 'silent! write!' (s:bob_base_path . '/dev/.ycm_extra_conf.py')
 	" clean up the temporary buffer and tab
-	bw!
+	bd!
 	if filereadable(l:db_path_abs."/compile_commands.json")
-		"copy the compilation database for chromatica
+		"copy the compilation database for chromatica and clangd-based
+		"YouCompleteMe
 		let fl = readfile(l:db_path_abs."/compile_commands.json", "b")
 		call writefile(fl, s:bob_base_path."/dev/compile_commands.json", "b")
 	else
 		echom "No compile_commands.json file found! Plugins that rely on it may not work with that Bob project."
 	endif
+	" add contents of all depending packages to the root package compilation
+	" database
+	execute "tabnew" fnameescape(s:bob_base_path . "/dev/compile_commands.json")
+	" replace closing bracket at last line with comma for possible
+	" continuation of the list
+	normal Gr,
+	for l:build_dir in values(s:project_package_build_dirs)
+		let l:file = fnameescape(l:build_dir . "/compile_commands.json")
+		if filereadable(l:file)
+			execute "read" l:file
+			normal ddGr,
+		endif
+	endfor
+	" add closing bracket at last line, also removes the last comma
+	normal Gr]
+	execute "silent! write!"
+
+	"workaround for error message "Key not present in Dictionary: git"
+	"seems to happen only when airline and fugitive are loaded
+	"found a file-scoped dictionary in
+	"vim-airline/autoload/airline/extensions/branch.vim
+	"is this a race condition in neovim?
+	sleep 100 m
+
+	bd!
 endfunction
 
 " try to load the given file and return it's content
