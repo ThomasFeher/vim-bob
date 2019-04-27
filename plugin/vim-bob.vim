@@ -286,6 +286,7 @@ function! s:Ycm(package,...)
 	" remove newlines (output of bob query-path contains a trailing newline)
 	let l:db_path_subst = substitute(l:db_path_subst, '\n', '', 'g')
 	" copy the template into the dev directory
+	" TODO use this approach: https://vi.stackexchange.com/a/16059/7823
 	tabnew
 	" insert the correct path to the compilation database file
 	execute 'read' (s:script_path . '/ycm_extra_conf.py.template')
@@ -304,6 +305,7 @@ function! s:Ycm(package,...)
 	endif
 	" add contents of all depending packages to the root package compilation
 	" database
+	" TODO use this approach: https://vi.stackexchange.com/a/16059/7823
 	execute "tabnew" fnameescape(s:bob_base_path . "/dev/compile_commands.json")
 	" replace closing bracket at last line with comma for possible
 	" continuation of the list
