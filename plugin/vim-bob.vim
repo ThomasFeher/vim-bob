@@ -3,6 +3,8 @@ let s:is_initialized = 0
 " template file
 let s:script_path = expand('<sfile>:h')
 let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
+" command line options that are not suitable for calling bob-querry commands
+let s:query_option_filter = ["-b", "--build-only"]
 let s:project_config = ''
 if !exists('g:bob_reduce_goto_list')
 	let g:bob_reduce_goto_list = 1
@@ -275,9 +277,7 @@ endfunction
 function! s:Ycm(package,...)
 	call s:CheckInit()
 	" get build path, which is also the path to the compilation database
-	" TODO generic function for building the bob command from the given
-	" parameters, as we could use the configuration here, too.
-	let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . a:package)
+	let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . join(filter(copy(s:project_options[1:-1]), 'match(s:query_option_filter, v:val)'), ' ') . ' ' . a:package)
 	let l:db_path = s:RemoveWarnings(l:output)
 	if empty(l:db_path)
 		echohl WarningMsg | echo a:package " has not been built yet." | echohl None
