@@ -96,6 +96,10 @@ function! s:GotoPackageSourceDir(bang, ...)
 				return
 			endif
 		endif
+		if empty(l:dir)
+			echoerr "package " . a:1 . " has no source directory"
+			return
+		endif
 		echom l:dir
 		execute l:command . s:bob_base_path . "/" . l:dir
 	else
