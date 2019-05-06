@@ -305,7 +305,10 @@ function! s:Ycm(package,...)
 		let fl = readfile(l:db_path_abs."/compile_commands.json", "b")
 		call writefile(fl, s:bob_base_path."/dev/compile_commands.json", "b")
 	else
-		echom "No compile_commands.json file found! Plugins that rely on it may not work with that Bob project."
+		echom "No compile_commands.json file found in root package!"
+		" create an empty file because the subsequent part of this function
+		" relys on an existing database
+		call writefile(['[', ']'], s:bob_base_path.'/compile_commands.json', 'b')
 	endif
 	" add contents of all depending packages to the root package compilation
 	" database
