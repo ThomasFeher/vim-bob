@@ -4,8 +4,11 @@ let s:is_initialized = 0
 let s:script_path = expand('<sfile>:h')
 let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
 " command line options that are not suitable for calling bob-querry commands
-let s:query_option_filter = ["-b", "--build-only"]
+let s:query_option_filter = ["-b", "--build-only", "-v", "--verbose"]
 let s:project_config = ''
+let s:projectd_options = []
+" options that are not usable for queries are removed here (see s:query_option_filter)
+let s:project_query_options = []
 if !exists('g:bob_reduce_goto_list')
 	let g:bob_reduce_goto_list = 1
 endif
@@ -88,6 +91,7 @@ function! s:GotoPackageSourceDir(bang, ...)
 			" in project mode, we already cached the source directories
 			let l:dir = s:project_package_src_dirs_reduced[a:1]
 		else
+			" TODO use correct configuration
 			let l:output = system("cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
 			let l:dir = s:RemoveWarnings(l:output)
 			if empty(l:dir)
@@ -129,7 +133,10 @@ function! s:Project(bang, package, ...)
 	"      error occurs subsequently which does not allow proper loading of
 	"      the project
 	let s:project_name = a:package
-	let s:project_options = a:000
+	" the first option is always the configuration (without the '-c'), which
+	" is stored separately in s:project_config
+	let s:project_options = copy(a:000[1:-1])
+	let s:project_query_options = filter(copy(s:project_options[1:-1]), 'match(s:query_option_filter, v:val) == -1')
 	if a:0 == 0
 		let s:project_config = ''
 	else
@@ -137,13 +144,14 @@ function! s:Project(bang, package, ...)
 	endif
 
 	" generate list of packages needed by that root package
-	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . s:project_config . " " . a:package)
+	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . s:project_config . " " . join(s:project_query_options, " ") . " " . a:package)
+	echom l:list
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
 	let s:project_package_src_dirs = {}
 	echo "gather source paths …"
 	for l:package in l:list
-		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . " " . l:package
+		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . l:package
 		" the path contains a trailing newline, which is removed by
 		" substitute()
 		let s:project_package_src_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
@@ -186,14 +194,14 @@ function! s:Project(bang, package, ...)
 		let s:project_package_src_dirs_reduced = s:project_package_src_dirs
 	endif
 	" add the root recipe to the lists
-	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:package
+	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . a:package
 	" the path contains a trailing newline, which is removed by substitute()
 	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
 
 	echo "gather build paths …"
 	let s:project_package_build_dirs = {}
 	for l:package in l:list
-		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . s:project_config . " " . l:package
+		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . l:package
 		" the path contains a trailing newline, which is removed by
 		" substitute()
 		let s:project_package_build_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
@@ -277,7 +285,7 @@ endfunction
 function! s:Ycm(package,...)
 	call s:CheckInit()
 	" get build path, which is also the path to the compilation database
-	let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . join(filter(copy(s:project_options[1:-1]), 'match(s:query_option_filter, v:val)'), ' ') . ' ' . a:package)
+	let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package)
 	let l:db_path = s:RemoveWarnings(l:output)
 	if empty(l:db_path)
 		echohl WarningMsg | echo a:package " has not been built yet." | echohl None
