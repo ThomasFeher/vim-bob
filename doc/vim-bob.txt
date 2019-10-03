@@ -5,6 +5,22 @@ URL:    https://github.com/ThomasFeher/vim-bob
 
 ==============================================================================
 
+Workflow                                         *vim-bob-workflow*
+
+The usual workflow is as follows:
+* Change directory into the recipe repository.
+* Start vim.
+* Run |:BobInit| to initialize vim-bob.
+* Run |:BobProject| to define the project to work on. This will build the
+  current state of the project and setup configuration for the YouCompleteMe
+  plugin.
+* Use |:BobGoto| to set the working path to the root directory of the
+  specified package.
+* Start editing files of that package.
+* Run |:make| to rebuild the project.
+
+==============================================================================
+
 Commands                                         *vim-bob-commands*
 
                                                  *vim-bob:BobInit*
@@ -23,27 +39,46 @@ Commands                                         *vim-bob-commands*
 :BobGoto [package]
          Changes the current working directory of the buffer to be the source
          directory of the given [package].
+         Provided for auto-completion:
+         * dependencies of current project exclusively
+         * non-root recipes
 
 :BobGoto! [package]
           Like ":BobGoto" but sets the current working directory globally.
 
+                                                 *vim-bob:BobGotoAll*
+:BobGotoAll [package]
+         Changes the current working directory of the buffer to be the source
+         directory of the given [package].
+         Provides all available root recipes for auto-completion.
+
+:BobGotoAll! [package]
+          Like ":BobGotoAll" but sets the current working directory globally.
+
                                                  *vim-bob:BobDev*
-:BobDev [package] ([configuration] ([parameters]))
+:BobDev ([package] ([configuration] ([parameters])))
          Build [package] with [configuration] in development mode.
          Runs "bob dev [package] -c <configuration-dir>/[configuration]
          [parameters]"
+         When called with no arguments the package, configuration and
+         parameters are built that were specified with the last call of
+         |:BobProject|.
          Additionally sets |makeprg| for the current file, so that
          subsequently the same command can be run via |:make| and error
          messages are parsed and gathered in the |quickfix| window.
 
                                                  *vim-bob:BobDevAndBuildCompilationDatabase*
-:BobDevAndBuildCompilationDatabase [package] ([configuration] ([parameters]))
-         Same as |BobDev| but additionaly a ".ycm_extra_conf.py" file is
-         generated that loads the compilation database from the build.
-         This allows conveniently using |YouCompleteMe| in a Bob environment.
-         It is necessary to configure the build system to generate a
-         "compile_commands.json" file in the build directory. CMake will do
-         this if called with "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".
+:BobProject [package] ([configuration] ([parameters]))
+         Same as |BobDev| but additionally sets the current project to that
+         package. That means that |:BobGoto| will provide only dependencies of
+         that package for auto-completion, but opposing to |:BobGotoAll| it
+         will also provide non-root recipes.
+         Additionaly a ".ycm_extra_conf.py" file is generated that loads the
+         compilation database from the build.  This allows conveniently using
+         |YouCompleteMe| in a Bob environment.  It is necessary to configure
+         the build system to generate a "compile_commands.json" file in the
+         build directory. CMake will do this if called with
+         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".
 
                                                  *vim-bob:BobClean*
 :BobClean
@@ -57,6 +92,19 @@ Configuration                                    *vim-bob-configuration*
 g:bob_config_path
          Path to configuration files (with file extension ".yaml") relative to
          the base path.
+
+g:bob_reduce_goto_list
+         Default: 1
+         The list of possible packages for |:BobGoto| is reduced to show only
+         the leaf package instead of the complete tree from the project root
+         package. As this could result in duplicates when different packages
+         depend on the same package, these duplicate entries are removed as
+         well. This is only performed if the source directory for all variants
+         are equal, otherwise the variants will remain with their full package
+         path.
+         This reduces the number of elements and also their size
+         significantly, which eases finding the correct one during command
+         completion.
 
 ==============================================================================
 
