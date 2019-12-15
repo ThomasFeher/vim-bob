@@ -354,8 +354,43 @@ function! s:LoadCompileCommands(file)
 	return join(readfile(a:file), "\n")
 endfunction
 
+function! s:Graph()
+	call s:CheckInit()
+	echo s:project_options
+	if !exists("g:vim_bob_graph_type")
+		" using the same default as Bob currently uses (as of v0.16)
+		let g:vim_bob_graph_type = "d3"
+	endif
+
+	" run `bob graph`
+	let l:graph_type = "-t " . g:vim_bob_graph_type
+	let l:filename = substitute(s:project_name, "[_:-]", "", "g")
+	echo s:project_name
+	echo l:filename
+	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob graph " . s:project_config . " " . join(s:project_query_options) . " " . l:graph_type . " -f " . l:filename . " " . s:project_name
+	echo l:command
+	" using s:project_query_options because `bob graph` seems to dislike the
+	" same options as the query commands
+	echo system(l:command)
+
+	" open generated graph
+	if g:vim_bob_graph_type ==? "dot"
+		let l:command = "cd " . shellescape(s:bob_base_path) . "/graph/" . "; dot -Tpng -o " . l:filename . ".png " . l:filename . ".dot"
+		echo l:command
+		echo system(l:command)
+		let l:command = "cd " . shellescape(s:bob_base_path) . "/graph/" . "; xdg-open " . l:filename . ".png"
+		echo l:command
+		echo system(l:command)
+	elseif g:vim_bob_graph_type ==? "d3"
+		let l:command = "cd " . shellescape(s:bob_base_path) . "/graph/" . "; xdg-open " . l:filename . ".html"
+		echo l:command
+		echo system(l:command)
+	endif
+endfunction
+
 command! BobInit call s:Init()
 command! BobClean call s:Clean()
+command! BobGraph call s:Graph()
 command! -bang -nargs=? -complete=custom,s:ProjectPackageComplete BobGoto call s:GotoPackageSourceDir("<bang>", <f-args>)
 command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGotoAll call s:GotoPackageSourceDir("<bang>", <f-args>)
 command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
