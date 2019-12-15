@@ -6,7 +6,7 @@ let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
 " command line options that are not suitable for calling bob-querry commands
 let s:query_option_filter = ["-b", "--build-only", "-v", "--verbose"]
 let s:project_config = ''
-let s:projectd_options = []
+let s:project_options = []
 " options that are not usable for queries are removed here (see s:query_option_filter)
 let s:project_query_options = []
 if !exists('g:bob_reduce_goto_list')
