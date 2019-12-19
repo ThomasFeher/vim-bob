@@ -145,7 +145,6 @@ function! s:Project(bang, package, ...)
 
 	" generate list of packages needed by that root package
 	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . s:project_config . " " . join(s:project_query_options, " ") . " " . a:package)
-	echom l:list
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
 	let s:project_package_src_dirs = {}
