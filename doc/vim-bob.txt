@@ -85,6 +85,12 @@ Commands                                         *vim-bob-commands*
          Deletes `dev/build` and `dev/dist` directories to force rebuilding of
          all artifacts.
 
+                                                 *vim-bob:BobGraph*
+:BobGraph
+         Generates dependency graph for the current project.
+         Requires that |BobProject| has been called beforehand.
+         |g:bob_graph_type| controls the output format.
+
 ==============================================================================
 
 Configuration                                    *vim-bob-configuration*
@@ -105,6 +111,9 @@ g:bob_reduce_goto_list
          This reduces the number of elements and also their size
          significantly, which eases finding the correct one during command
          completion.
+g:bob_graph_type
+         Default: "d3"
+         Output format of |BobGraph|, must be one of "d3" or "dot".
 
 ==============================================================================
 
