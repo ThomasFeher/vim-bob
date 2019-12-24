@@ -1,13 +1,24 @@
+" represents the initializatoin state of the the plugin
 let s:is_initialized = 0
 " get path of the current script, which is also the path to the YCM config
 " template file
 let s:script_path = expand('<sfile>:h')
+" list of additional parameters for `BobDev` and `BobProject` used for
+" auto-completion
 let s:additional_params = ["-DBUILD_TYPE=Release", "-DBUILD_TYPE=Debug"]
 " command line options that are not suitable for calling bob-querry commands
 let s:query_option_filter = ["-b", "--build-only", "-v", "--verbose"]
+" the name of the project, effectively the name of the Bob package
+let s:project_name = ''
+" the configuration used for the current project as given to `BobProject`,
+" i.e. without the file ending and without the `-c` command line option
 let s:project_config = ''
+" all command line options for the current project excluding the configuration
+" option, which is stored separately in s:project_config
 let s:project_options = []
-" options that are not usable for queries are removed here (see s:query_option_filter)
+" derived from s:project_options, but options that are not usable for queries
+" are removed here (see s:query_option_filter)
+" these options are also suitable for usage with `bob ls` and `bob graph`
 let s:project_query_options = []
 if !exists('g:bob_reduce_goto_list')
 	let g:bob_reduce_goto_list = 1
@@ -228,7 +239,7 @@ endfunction
 function! s:Dev(bang, ...)
 	call s:CheckInit()
 	if (a:0 == 0)
-		if exists('s:project_name')
+		if !empty(s:project_name)
 			let l:package = s:project_name
 			let l:optionals = s:project_options
 		else
