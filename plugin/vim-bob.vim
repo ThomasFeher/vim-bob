@@ -147,15 +147,15 @@ function! s:Project(bang, package, ...)
 	let l:list = system("cd " . shellescape(s:bob_base_path) . "; bob ls --prefixed --recursive " . s:project_config . " " . join(s:project_query_options, " ") . " " . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
-	let s:project_package_src_dirs = {}
+	let l:project_package_src_dirs = {}
 	echo "gather source paths …"
 	for l:package in l:list
 		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . l:package
 		" the path contains a trailing newline, which is removed by
 		" substitute()
-		let s:project_package_src_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
+		let l:project_package_src_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
 	endfor
-	let l:package_long_names = keys(s:project_package_src_dirs)
+	let l:package_long_names = keys(l:project_package_src_dirs)
 	let l:map_short_to_long_names = {}
 	if g:bob_reduce_goto_list
 		" generate map of all short packages names associated to a list of
@@ -174,23 +174,23 @@ function! s:Project(bang, package, ...)
 		for l:short_name in keys(l:map_short_to_long_names)
 			let l:all_dirs = []
 			for l:long_name in l:map_short_to_long_names[l:short_name]
-				let l:all_dirs += [s:project_package_src_dirs[l:long_name]]
+				let l:all_dirs += [l:project_package_src_dirs[l:long_name]]
 			endfor
 			if len(uniq(sort(l:all_dirs))) == 1
 				" all directories are equal, therefor store only the short
 				" name and the according directory
-				let s:project_package_src_dirs_reduced[l:short_name] = s:project_package_src_dirs[l:map_short_to_long_names[l:short_name][0]]
+				let s:project_package_src_dirs_reduced[l:short_name] = l:project_package_src_dirs[l:map_short_to_long_names[l:short_name][0]]
 			else
 				" at least one package has a different directory, therefor
 				" store all variants with there complete package name and the
 				" according directories
 				for l:long_name in l:map_short_to_long_names[l:short_name]
-					let s:project_package_src_dirs_reduced[l:long_name] = s:project_package_src_dirs[l:long_name]
+					let s:project_package_src_dirs_reduced[l:long_name] = l:project_package_src_dirs[l:long_name]
 				endfor
 			endif
 		endfor
 	else
-		let s:project_package_src_dirs_reduced = s:project_package_src_dirs
+		let s:project_package_src_dirs_reduced = l:project_package_src_dirs
 	endif
 	" add the root recipe to the lists
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . a:package
