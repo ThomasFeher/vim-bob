@@ -147,7 +147,7 @@ function! s:Project(bang, package, ...)
 	" the first option is always the configuration (without the '-c'), which
 	" is stored separately in s:project_config
 	let s:project_options = copy(a:000[1:-1])
-	let s:project_query_options = filter(copy(s:project_options[1:-1]), 'match(s:query_option_filter, v:val) == -1')
+	let s:project_query_options = filter(copy(s:project_options[0:-1]), 'match(s:query_option_filter, v:val) == -1')
 	if a:0 == 0
 		let s:project_config = ''
 	else
