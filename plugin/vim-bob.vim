@@ -260,7 +260,6 @@ endfunction
 " as separte variables (a:0, a:1, etc.).
 function! s:DevImpl(bang, package, optionals)
 	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob dev " . a:package
-	echo a:optionals
 	if len(a:optionals) == 0
 		let &makeprg = l:command
 	else
