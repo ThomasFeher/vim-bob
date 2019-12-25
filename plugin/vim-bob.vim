@@ -173,6 +173,9 @@ function! s:Project(bang, package, ...)
 	endfor
 	let l:package_long_names = keys(l:project_package_src_dirs)
 	let l:map_short_to_long_names = {}
+	" TODO the query-path does already reduce the list, we its only necessary
+	" to remove dublicate entries from l:project_package_src_dirs and
+	" s:project_package_build_dirs
 	if g:bob_reduce_goto_list
 		" generate map of all short packages names associated to a list of
 		" according long packages names
