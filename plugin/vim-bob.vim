@@ -159,12 +159,17 @@ function! s:Project(bang, package, ...)
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, '\n')
 	let l:project_package_src_dirs = {}
-	echo "gather source paths …"
+	echo "gather package paths …"
+	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . join(l:list, " ")
+	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
+	let l:idx = 0
+	let s:project_package_build_dirs = {}
 	for l:package in l:list
-		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . l:package
-		" the path contains a trailing newline, which is removed by
-		" substitute()
-		let l:project_package_src_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
+		let l:matches = matchlist(l:result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
+		echom "caching " . l:package . " as " . l:matches[1]
+		let l:project_package_src_dirs[l:package] = l:matches[2]
+		let s:project_package_build_dirs[l:package] = l:matches[3]
+		let idx += 1
 	endfor
 	let l:package_long_names = keys(l:project_package_src_dirs)
 	let l:map_short_to_long_names = {}
@@ -208,14 +213,6 @@ function! s:Project(bang, package, ...)
 	" the path contains a trailing newline, which is removed by substitute()
 	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
 
-	echo "gather build paths …"
-	let s:project_package_build_dirs = {}
-	for l:package in l:list
-		let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{build}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . l:package
-		" the path contains a trailing newline, which is removed by
-		" substitute()
-		let s:project_package_build_dirs[l:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", "", "")
-	endfor
 	" The long package names are used for specifying the build directories,
 	" because in theory a package could be build multiple times with different
 	" build-flags and therefor in different build folders, because its
