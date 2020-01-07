@@ -160,15 +160,19 @@ function! s:Project(bang, package, ...)
 	let l:list = split(l:list, '\n')
 	let l:project_package_src_dirs = {}
 	echo "gather package paths …"
-	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . join(l:list, " ")
+	let l:command = "cd " . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . s:project_config . " " . join(s:project_query_options, " ") . " " . join(l:list, " ") . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
 	let l:idx = 0
 	let s:project_package_build_dirs = {}
 	for l:package in l:list
 		let l:matches = matchlist(l:result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
-		echom "caching " . l:package . " as " . l:matches[1]
-		let l:project_package_src_dirs[l:package] = l:matches[2]
-		let s:project_package_build_dirs[l:package] = l:matches[3]
+		if empty(l:matches)
+			echom 'skipped caching of ' . l:package
+		else
+			echom "caching " . l:package . " as " . l:matches[1]
+			let l:project_package_src_dirs[l:package] = l:matches[2]
+			let s:project_package_build_dirs[l:package] = l:matches[3]
+		endif
 		let idx += 1
 	endfor
 	let l:package_long_names = keys(l:project_package_src_dirs)
