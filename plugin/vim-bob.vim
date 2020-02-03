@@ -7,7 +7,7 @@ let s:script_path = expand('<sfile>:h')
 " auto-completion
 let s:additional_params = ['-DBUILD_TYPE=Release', '-DBUILD_TYPE=Debug']
 " command line options that are not suitable for calling bob-querry commands
-let s:query_option_filter = ['-b', '--build-only', '-v', '--verbose']
+let s:query_option_filter = ['-b', '--build-only', '-v', '--verbose', '--clean', '--force']
 " the name of the project, effectively the name of the Bob package
 let s:project_name = ''
 " the configuration used for the current project as given to `BobProject`,
