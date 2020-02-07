@@ -128,7 +128,7 @@ g:bob_graph_type
 
 ==============================================================================
 
-Interaction with other plugins                   vim-bob-interaction
+Interaction with other plugins                   *vim-bob-interaction*
 
 CtrlP
          Per default |CtrlP| will search the repository structure of the current
