@@ -310,16 +310,11 @@ function! s:Ycm(package,...)
 	let l:db_path_subst = substitute(l:db_path_abs, '/', '\\/', 'g')
 	" remove newlines (output of bob query-path contains a trailing newline)
 	let l:db_path_subst = substitute(l:db_path_subst, '\n', '', 'g')
-	" copy the template into the dev directory
-	" TODO use this approach: https://vi.stackexchange.com/a/16059/7823
-	tabnew
-	" insert the correct path to the compilation database file
-	execute 'read' (s:script_path . '/ycm_extra_conf.py.template')
-	let l:subst_command = '%s/@db_path@/' . l:db_path_subst . '\/'
-	execute(l:subst_command)
-	execute 'silent! write!' (s:bob_base_path . '/dev/.ycm_extra_conf.py')
-	" clean up the temporary buffer and tab
-	bd!
+	" copy the template into the dev directory and insert the correct path to
+	" the compilation database file
+	let l:text = readfile(s:script_path . '/ycm_extra_conf.py.template')
+	call map(l:text, 'substitute(v:val, "@db_path@", l:db_path_subst, "g")')
+	call writefile(l:text, s:bob_base_path . '/dev/.ycm_extra_conf.py')
 	if filereadable(l:db_path_abs.'/compile_commands.json')
 		"copy the compilation database for chromatica and clangd-based
 		"YouCompleteMe
@@ -333,30 +328,22 @@ function! s:Ycm(package,...)
 	endif
 	" add contents of all depending packages to the root package compilation
 	" database
-	" TODO use this approach: https://vi.stackexchange.com/a/16059/7823
-	execute 'tabnew' fnameescape(s:bob_base_path . '/dev/compile_commands.json')
+	let l:fileName = fnameescape(s:bob_base_path . '/dev/compile_commands.json')
+	let l:text = readfile(l:fileName)
 	" replace closing bracket at last line with comma for possible
 	" continuation of the list
-	normal Gr,
+	let l:text[-1] = ','
 	for l:build_dir in values(s:project_package_build_dirs)
 		let l:file = fnameescape(l:build_dir . '/compile_commands.json')
 		if filereadable(l:file)
-			execute 'read' l:file
-			normal ddGr,
+			let l:textToAdd = readfile(l:file)
+			" append without the surrounding brackets (first and last line)
+			call extend(l:text, l:textToAdd[1:-2])
 		endif
 	endfor
-	" add closing bracket at last line, also removes the last comma
-	normal Gr]
-	execute 'silent! write!'
-
-	"workaround for error message "Key not present in Dictionary: git"
-	"seems to happen only when airline and fugitive are loaded
-	"found a file-scoped dictionary in
-	"vim-airline/autoload/airline/extensions/branch.vim
-	"is this a race condition in neovim?
-	sleep 100 m
-
-	bd!
+	" add closing bracket at last line
+	call add(l:text, ']')
+	call writefile(l:text, l:fileName)
 endfunction
 
 " try to load the given file and return it's content
