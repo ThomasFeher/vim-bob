@@ -137,6 +137,19 @@ endfunction
 function! s:Project(bang, package, ...)
 	call s:CheckInit()
 	call s:DevImpl(a:bang, a:package, a:000)
+	augroup bob
+		autocmd!
+		" make generated files not writeable, in order to prevent editing the
+		" wrong file and losing the changes during Bob's rebuild
+		let s:roPath = '*/dev/dist/*,*/dev/build/*'
+		let s:errMsg = 'vim-bob: You are trying to edit a generated file.'
+					\ .' If you really want to write to it use `set buftype=`'
+					\ .' and proceed, but rebuilding will probably delete these'
+					\ .' changes!'
+		" using 'acwrite' so we can present a meaningful error message
+		autocmd BufReadPost s:roPath set buftype=acwrite
+		autocmd BufWriteCmd s:roPath echoerr s:errMsg
+	augroup END
 
 	" set already known project properties globally, so they are usable
 	" subsequently
