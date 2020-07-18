@@ -1,4 +1,4 @@
-" represents the initializatoin state of the the plugin
+" represents the initialization state of the plugin
 let s:is_initialized = 0
 " get path of the current script, which is also the path to the YCM config
 " template file
@@ -191,7 +191,7 @@ function! s:Project(bang, package, ...)
 	let l:package_long_names = keys(l:project_package_src_dirs)
 	let l:map_short_to_long_names = {}
 	" TODO the query-path does already reduce the list, we its only necessary
-	" to remove dublicate entries from l:project_package_src_dirs and
+	" to remove duplicate entries from l:project_package_src_dirs and
 	" s:project_package_build_dirs
 	if g:bob_reduce_goto_list
 		" generate map of all short packages names associated to a list of
@@ -242,7 +242,7 @@ function! s:Project(bang, package, ...)
 	" names multiple times.
 	" On the other hand we want to stay as generic as possible. There could be
 	" a project generating multiple applications or libraries for example.
-	" So for comomn cases we will get a compilation databases that contains
+	" So for common cases we will get a compilation databases that contains
 	" redundant entries. Which should be no problem for the common, single
 	" target, use case. In the multi-target use case we have a problem anyway
 	" because we would have to generate multiple compilation databases, but it
@@ -272,9 +272,9 @@ function! s:Dev(bang, ...)
 endfunction
 
 " we need this extra function to be able to forward optional parameters from
-" other functions as well as comands. Forwarding from functions does work with
+" other functions as well as commands. Forwarding from functions does work with
 " a list of arguments exclusively, whereas commands provide optional arguments
-" as separte variables (a:0, a:1, etc.).
+" as separate variables (a:0, a:1, etc.).
 function! s:DevImpl(bang, package, optionals)
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob dev ' . a:package
 	if len(a:optionals) == 0
@@ -300,8 +300,8 @@ function! s:RemoveWarnings(bob_output)
 	"Assumption: Only last line of output is the actual output, everything
 	"else is a warning
 	let l:output = split(a:bob_output, "\n")[-1]
-	"check if last line is also a warning because the actual output is
-	"of query-path is empty
+	"check if last line is also a warning, in that case the actual output of
+	"query-path is empty
 	if l:output !~# '^WARNING: .*$' && l:output !~# '^INFO: .*$' && l:output !~# '^See .*$'
 		return l:output
 	endif
@@ -336,7 +336,7 @@ function! s:Ycm(package,...)
 	else
 		echom 'No compile_commands.json file found in root package!'
 		" create an empty file because the subsequent part of this function
-		" relys on an existing database
+		" relies on an existing database
 		call writefile(['[', ']'], s:bob_base_path.'/compile_commands.json', 'b')
 	endif
 	" add contents of all depending packages to the root package compilation
