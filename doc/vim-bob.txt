@@ -78,7 +78,7 @@ Commands                                         *vim-bob-commands*
          subsequently the same command can be run via |:make| and error
          messages are parsed and gathered in the |quickfix| window.
 
-                                                 *vim-bob:BobDevAndBuildCompilationDatabase*
+                                                 *vim-bob:BobProject*
 :BobProject [package] ([configuration] ([parameters]))
          Same as |BobDev| but additionally sets the current project to that
          package. That means that |:BobGoto| will provide only dependencies of
