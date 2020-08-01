@@ -352,10 +352,12 @@ function! s:Ycm(package,...)
 			let l:textToAdd = readfile(l:file)
 			" append without the surrounding brackets (first and last line)
 			call extend(l:text, l:textToAdd[1:-2])
+			" add comma for possible continuation
+			call add(l:text, ',')
 		endif
 	endfor
-	" add closing bracket at last line
-	call add(l:text, ']')
+	" replace last comma with closing bracket
+	let l:text[-1] = ']'
 	call writefile(l:text, l:fileName)
 endfunction
 
