@@ -337,7 +337,7 @@ function! s:Ycm(package,...)
 		echom 'No compile_commands.json file found in root package!'
 		" create an empty file because the subsequent part of this function
 		" relies on an existing database
-		call writefile(['[', ']'], s:bob_base_path.'/compile_commands.json', 'b')
+		call writefile(['[', ']'], s:bob_base_path.'/dev/compile_commands.json')
 	endif
 	" add contents of all depending packages to the root package compilation
 	" database
