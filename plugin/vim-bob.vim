@@ -326,7 +326,7 @@ function! s:Ycm(package,...)
 	" copy the template into the dev directory and insert the correct path to
 	" the compilation database file
 	let l:text = readfile(s:script_path . '/ycm_extra_conf.py.template')
-	call map(l:text, 'substitute(v:val, "@db_path@", l:db_path_subst, "g")')
+	call map(l:text, 'substitute(v:val, "@db_path@", s:bob_base_path."/dev", "g")')
 	call writefile(l:text, s:bob_base_path . '/dev/.ycm_extra_conf.py')
 	if filereadable(l:db_path_abs.'/compile_commands.json')
 		"copy the compilation database for chromatica and clangd-based
