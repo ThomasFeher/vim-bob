@@ -19,6 +19,17 @@ The usual workflow is as follows:
 * Start editing files of that package.
 * Run |:make| to rebuild the project.
 
+|:BobProject| automatically prevents writing to files in `dev/build/` and
+`dev/dist`, because these files will be overwritten by Bob during a build and
+it is easy to confuse them with equally named files in `dev/src/`. For example
+build error messages could refer to header files of depending modules and
+therefore jumping to the error jumps into `dev/dist/`. Rebuilding the project
+after fixing an error in such a file would then overwrite the file and all
+changes would be lost.
+However, there is currently no way to remove this behaviour via vim-bobs API.
+If necessary, this behaviour can be removed manually by deleting |augroup|
+`bob` via `:augroup! bob` .
+
 ==============================================================================
 
 Commands                                         *vim-bob-commands*
@@ -67,7 +78,7 @@ Commands                                         *vim-bob-commands*
          subsequently the same command can be run via |:make| and error
          messages are parsed and gathered in the |quickfix| window.
 
-                                                 *vim-bob:BobDevAndBuildCompilationDatabase*
+                                                 *vim-bob:BobProject*
 :BobProject [package] ([configuration] ([parameters]))
          Same as |BobDev| but additionally sets the current project to that
          package. That means that |:BobGoto| will provide only dependencies of
@@ -117,7 +128,7 @@ g:bob_graph_type
 
 ==============================================================================
 
-Interaction with other plugins                   vim-bob-interaction
+Interaction with other plugins                   *vim-bob-interaction*
 
 CtrlP
          Per default |CtrlP| will search the repository structure of the current
