@@ -402,6 +402,22 @@ function! s:Graph()
 	endif
 endfunction
 
+function! s:SearchSource(pattern, bang)
+	if empty(s:project_name)
+		throw 'I do not know where to search. Run :BobProject before doing a search!'
+	endif
+	let l:old_path = getcwd()
+	let l:spec = {'dir': s:bob_base_path}
+	call fzf#vim#grep(
+				\   'rg --column --line-number --no-heading --color=always ' 
+				\  . (len(a:pattern) > 0 ? a:pattern : '""') . ' '
+				\  . join(values(s:project_package_src_dirs_reduced), ' ')
+				\  , 1,
+				\   a:bang ? fzf#vim#with_preview(spec, 'up:60%')
+				\           : fzf#vim#with_preview(spec, 'right:50%:hidden', '?'),
+				\   a:bang)
+endfunction
+
 command! BobInit call s:Init()
 command! BobClean call s:Clean()
 command! BobGraph call s:Graph()
@@ -412,3 +428,4 @@ command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:Chec
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobProject call s:Project("<bang>",<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
+command! -bang -nargs=* BobSearchSource call s:SearchSource(<q-args>, <bang>0)

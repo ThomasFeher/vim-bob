@@ -102,6 +102,22 @@ Commands                                         *vim-bob-commands*
          Requires that |BobProject| has been called beforehand.
          |g:bob_graph_type| controls the output format.
 
+                                                 *vim-bob:BobSearch*
+:BobSearchSource [pattern]
+         Search [pattern] in all source directories that belong to the current
+         project.
+         Needs `fzf` and `ripgrep` to be installed.
+         The results are displayed by `fzf` in a floating window with the file
+         content right of the file name.
+         The preview window is disabled but can be toggled using `?`.
+         This mode is intended for getting an overview of search results.
+
+:BobSearchSource! [pattern]
+         Similar to  |:BobSearchSource| but the floating window uses the
+         complete vim window, the content of the files is displayed above the
+         file names and the preview window is enabled.
+         This mode is to see maximum amount of context of the search results.
+
 ==============================================================================
 
 Configuration                                    *vim-bob-configuration*
