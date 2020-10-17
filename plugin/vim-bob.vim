@@ -3,9 +3,6 @@ let s:is_initialized = 0
 " get path of the current script, which is also the path to the YCM config
 " template file
 let s:script_path = expand('<sfile>:h')
-" list of additional parameters for `BobDev` and `BobProject` used for
-" auto-completion
-let s:additional_params = ['-DBUILD_TYPE=Release', '-DBUILD_TYPE=Debug']
 " command line options that are not suitable for calling bob-querry commands
 let s:query_option_filter = ['-b', '--build-only', '-v', '--verbose', '--clean', '--force']
 " the name of the project, effectively the name of the Bob package
@@ -22,6 +19,9 @@ let s:project_options = []
 let s:project_query_options = []
 if !exists('g:bob_reduce_goto_list')
 	let g:bob_reduce_goto_list = 1
+endif
+if !exists('g:bob_auto_complete_items')
+	let g:bob_auto_complete_items = []
 endif
 
 function! s:RemoveInfoMessages(text)
@@ -84,7 +84,7 @@ function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
 	elseif len(l:command_list) < 4
 		return join(s:config_names, "\n")
 	else
-		return join(s:additional_params, "\n")
+		return join(g:bob_auto_complete_items, "\n")
 	endif
 endfunction
 

@@ -141,6 +141,10 @@ g:bob_reduce_goto_list
 g:bob_graph_type
          Default: "d3"
          Output format of |BobGraph|, must be one of "d3" or "dot".
+g:bob_auto_complete_items
+         List of additional parameters for `BobDev` and `BobProject` used for
+         auto-completion.
+         example: `['-DBUILD_TYPE=Release', '-DBUILD_TYPE=Debug']`
 
 ==============================================================================
 
