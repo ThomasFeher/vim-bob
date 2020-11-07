@@ -33,19 +33,26 @@ function! s:RemoveInfoMessages(text)
 endfunction
 
 function! s:Init()
-	let s:bob_package_list = system('bob ls')
-	let s:bob_package_tree_list = system('bob ls -pr')
-	if match(s:bob_package_list, 'Parse error:') != -1
+	let l:bob_package_list = system('bob ls')
+	let l:bob_package_tree_list = system('bob ls -pr')
+	if match(l:bob_package_list, 'Parse error:') != -1
 		echo 'vim-bob not initialized, output from bob ls:'
-		echo s:bob_package_list
+		echo l:bob_package_list
 		return
 	endif
-	let s:bob_package_list = s:RemoveInfoMessages(s:bob_package_list)
-	let s:bob_package_tree_list = s:RemoveInfoMessages(s:bob_package_tree_list)
-	let s:bob_base_path = getcwd()
-	let s:bob_config_path = get(g:, 'bob_config_path', '')
-	let s:bob_config_path_abs = s:bob_base_path.'/'.s:bob_config_path
-	let s:config_names = map(globpath(s:bob_config_path_abs, '*.yaml', 0, 1), 'fnamemodify(v:val, ":t:r")')
+	let l:bob_package_list = s:RemoveInfoMessages(l:bob_package_list)
+	let l:bob_package_tree_list = s:RemoveInfoMessages(l:bob_package_tree_list)
+	let l:bob_base_path = getcwd()
+	let l:bob_config_path = get(g:, 'bob_config_path', '')
+	let l:bob_config_path_abs = l:bob_base_path.'/'.l:bob_config_path
+	let l:config_names = map(globpath(l:bob_config_path_abs, '*.yaml', 0, 1), 'fnamemodify(v:val, ":t:r")')
+	" everything went right, now persist the new state
+	let s:bob_base_path = l:bob_base_path
+	let s:bob_package_list = l:bob_package_list
+	let s:bob_package_tree_list = l:bob_package_tree_list
+	let s:bob_config_path = l:bob_config_path
+	let s:bob_config_path_abs = l:bob_config_path_abs
+	let s:config_names = l:config_names
 	let s:is_initialized = 1
 endfunction
 
@@ -137,46 +144,30 @@ endfunction
 function! s:Project(bang, package, ...)
 	call s:CheckInit()
 	call s:DevImpl(a:bang, a:package, a:000)
-	augroup bob
-		autocmd!
-		" make generated files not writeable, in order to prevent editing the
-		" wrong file and losing the changes during Bob's rebuild
-		let s:roPath = '*/dev/dist/*,*/dev/build/*'
-		let s:errMsg = 'vim-bob: You are trying to edit a generated file.'
-					\ .' If you really want to write to it use `set buftype=`'
-					\ .' and proceed, but rebuilding will probably delete these'
-					\ .' changes!'
-		" using 'acwrite' so we can present a meaningful error message
-		autocmd BufReadPost s:roPath set buftype=acwrite
-		autocmd BufWriteCmd s:roPath echoerr s:errMsg
-	augroup END
 
-	" set already known project properties globally, so they are usable
+	" set already known project properties locally, so they are usable
 	" subsequently
-	" TODO use local variable so we can restore the global state in case an
-	"      error occurs subsequently which does not allow proper loading of
-	"      the project
-	let s:project_name = a:package
+	let l:project_name = a:package
 	" the first option is always the configuration (without the '-c'), which
 	" is stored separately in s:project_config
-	let s:project_options = copy(a:000[1:-1])
-	let s:project_query_options = filter(copy(s:project_options[0:-1]), 'match(s:query_option_filter, v:val) == -1')
+	let l:project_options = copy(a:000[1:-1])
+	let l:project_query_options = filter(copy(l:project_options[0:-1]), 'match(s:query_option_filter, v:val) == -1')
 	if a:0 == 0
-		let s:project_config = ''
+		let l:project_config = ''
 	else
-		let s:project_config = ' -c ' . s:bob_config_path . '/' . a:1
+		let l:project_config = ' -c ' . s:bob_config_path . '/' . a:1
 	endif
 
 	" generate list of packages needed by that root package
-	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package)
+	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
 	let l:list = split(l:list, "\n")
 	let l:project_package_src_dirs = {}
 	echo 'gather package paths …'
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
 	let l:idx = 0
-	let s:project_package_build_dirs = {}
+	let l:project_package_build_dirs = {}
 	for l:package in l:list
 		let l:matches = matchlist(l:result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
 		if empty(l:matches)
@@ -184,7 +175,7 @@ function! s:Project(bang, package, ...)
 		else
 			echom 'caching ' . l:package . ' as ' . l:matches[1]
 			let l:project_package_src_dirs[l:package] = l:matches[2]
-			let s:project_package_build_dirs[l:package] = l:matches[3]
+			let l:project_package_build_dirs[l:package] = l:matches[3]
 		endif
 		let idx += 1
 	endfor
@@ -192,7 +183,7 @@ function! s:Project(bang, package, ...)
 	let l:map_short_to_long_names = {}
 	" TODO the query-path does already reduce the list, we its only necessary
 	" to remove duplicate entries from l:project_package_src_dirs and
-	" s:project_package_build_dirs
+	" l:project_package_build_dirs
 	if g:bob_reduce_goto_list
 		" generate map of all short packages names associated to a list of
 		" according long packages names
@@ -206,7 +197,7 @@ function! s:Project(bang, package, ...)
 			endif
 		endfor
 		" check if the directories are equal for each short name package
-		let s:project_package_src_dirs_reduced = {}
+		let l:project_package_src_dirs_reduced = {}
 		for l:short_name in keys(l:map_short_to_long_names)
 			let l:all_dirs = []
 			for l:long_name in l:map_short_to_long_names[l:short_name]
@@ -215,23 +206,23 @@ function! s:Project(bang, package, ...)
 			if len(uniq(sort(l:all_dirs))) == 1
 				" all directories are equal, therefor store only the short
 				" name and the according directory
-				let s:project_package_src_dirs_reduced[l:short_name] = l:project_package_src_dirs[l:map_short_to_long_names[l:short_name][0]]
+				let l:project_package_src_dirs_reduced[l:short_name] = l:project_package_src_dirs[l:map_short_to_long_names[l:short_name][0]]
 			else
 				" at least one package has a different directory, therefor
 				" store all variants with there complete package name and the
 				" according directories
 				for l:long_name in l:map_short_to_long_names[l:short_name]
-					let s:project_package_src_dirs_reduced[l:long_name] = l:project_package_src_dirs[l:long_name]
+					let l:project_package_src_dirs_reduced[l:long_name] = l:project_package_src_dirs[l:long_name]
 				endfor
 			endif
 		endfor
 	else
-		let s:project_package_src_dirs_reduced = l:project_package_src_dirs
+		let l:project_package_src_dirs_reduced = l:project_package_src_dirs
 	endif
 	" add the root recipe to the lists
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package
 	" the path contains a trailing newline, which is removed by substitute()
-	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", '', '')
+	let l:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", '', '')
 
 	" The long package names are used for specifying the build directories,
 	" because in theory a package could be build multiple times with different
@@ -248,6 +239,27 @@ function! s:Project(bang, package, ...)
 	" because we would have to generate multiple compilation databases, but it
 	" is not possible to determine for which target a source file should be
 	" checked if it is used in multiple targets.
+
+	" persist new state
+	augroup bob
+		autocmd!
+		" make generated files not writeable, in order to prevent editing the
+		" wrong file and losing the changes during Bob's rebuild
+		let s:roPath = '*/dev/dist/*,*/dev/build/*'
+		let s:errMsg = 'vim-bob: You are trying to edit a generated file.'
+					\ .' If you really want to write to it use `set buftype=`'
+					\ .' and proceed, but rebuilding will probably delete these'
+					\ .' changes!'
+		" using 'acwrite' so we can present a meaningful error message
+		autocmd BufReadPost s:roPath set buftype=acwrite
+		autocmd BufWriteCmd s:roPath echoerr s:errMsg
+	augroup END
+	let s:project_name = l:project_name
+	let s:project_options = l:project_options
+	let s:project_query_options = l:project_query_options
+	let s:project_config = l:project_config
+	let s:project_package_build_dirs = l:project_package_build_dirs
+	let s:project_package_src_dirs_reduced = l:project_package_src_dirs_reduced
 
 	echo 'generate configuration for YouCompleteMe …'
 	call s:Ycm(a:package)
