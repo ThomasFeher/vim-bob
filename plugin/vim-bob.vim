@@ -245,7 +245,7 @@ function! s:Project(bang, package, ...)
 		autocmd!
 		" make generated files not writeable, in order to prevent editing the
 		" wrong file and losing the changes during Bob's rebuild
-		let l:roPath = '*/dev/dist/*,*/dev/build/*'
+		let l:roPath = s:bob_base_path . '/dev/dist/*,' . s:bob_base_path . '/dev/build/*'
 		let l:errMsg = 'vim-bob: You are trying to edit a generated file.'
 					\ .' If you really want to write to it use `set buftype=`'
 					\ .' and proceed, but rebuilding will probably delete these'
