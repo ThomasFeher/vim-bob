@@ -245,14 +245,14 @@ function! s:Project(bang, package, ...)
 		autocmd!
 		" make generated files not writeable, in order to prevent editing the
 		" wrong file and losing the changes during Bob's rebuild
-		let s:roPath = '*/dev/dist/*,*/dev/build/*'
-		let s:errMsg = 'vim-bob: You are trying to edit a generated file.'
+		let l:roPath = '*/dev/dist/*,*/dev/build/*'
+		let l:errMsg = 'vim-bob: You are trying to edit a generated file.'
 					\ .' If you really want to write to it use `set buftype=`'
 					\ .' and proceed, but rebuilding will probably delete these'
 					\ .' changes!'
 		" using 'acwrite' so we can present a meaningful error message
-		autocmd BufReadPost s:roPath set buftype=acwrite
-		autocmd BufWriteCmd s:roPath echoerr s:errMsg
+		execute 'autocmd BufReadPost ' . l:roPath . ' setlocal buftype=acwrite'
+		execute 'autocmd BufWriteCmd ' . l:roPath . ' echoerr "' . l:errMsg '"'
 	augroup END
 	let s:project_name = l:project_name
 	let s:project_options = l:project_options
