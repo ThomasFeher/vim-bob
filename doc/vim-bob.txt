@@ -35,9 +35,10 @@ If necessary, this behaviour can be removed manually by deleting |augroup|
 Commands                                         *vim-bob-commands*
 
                                                  *vim-bob:BobInit*
-:BobInit
+:BobInit [dir]
          Must be run before any other vim-bob command can be used. Initializes
-         vim-bob with the current working directory as the base directory.
+         vim-bob with [dir] or the current working directory, respectively, as
+         the base directory.
          The base directory is the directory where the bob commands are
          normally executed on the command line.
 

@@ -32,9 +32,10 @@ function! s:RemoveInfoMessages(text)
 	return l:text
 endfunction
 
-function! s:Init()
-	let l:bob_package_list = system('bob ls')
-	let l:bob_package_tree_list = system('bob ls -pr')
+function! s:Init(path)
+	let l:bob_base_path = empty(a:path) ? getcwd() : fnamemodify(a:path, ':p')
+	let l:bob_package_list = system('bob --directory=' . l:bob_base_path . ' ls')
+	let l:bob_package_tree_list = system('bob --directory=' . l:bob_base_path . ' ls -pr')
 	if match(l:bob_package_list, 'Parse error:') != -1
 		echo 'vim-bob not initialized, output from bob ls:'
 		echo l:bob_package_list
@@ -42,7 +43,6 @@ function! s:Init()
 	endif
 	let l:bob_package_list = s:RemoveInfoMessages(l:bob_package_list)
 	let l:bob_package_tree_list = s:RemoveInfoMessages(l:bob_package_tree_list)
-	let l:bob_base_path = getcwd()
 	let l:bob_config_path = get(g:, 'bob_config_path', '')
 	let l:bob_config_path_abs = l:bob_base_path.'/'.l:bob_config_path
 	let l:config_names = map(globpath(l:bob_config_path_abs, '*.yaml', 0, 1), 'fnamemodify(v:val, ":t:r")')
@@ -430,7 +430,7 @@ function! s:SearchSource(pattern, bang)
 				\   a:bang)
 endfunction
 
-command! BobInit call s:Init()
+command! -nargs=? -complete=dir BobInit call s:Init("<args>")
 command! BobClean call s:Clean()
 command! BobGraph call s:Graph()
 command! -bang -nargs=? -complete=custom,s:ProjectPackageComplete BobGoto call s:GotoPackageSourceDir("<bang>", <f-args>)
