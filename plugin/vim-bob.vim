@@ -386,6 +386,9 @@ function! s:HandleError(job_id, data, event)
 endfunction
 function! s:Graph()
 	call s:CheckInit()
+	if empty(s:project_name)
+		throw 'I do not know what to draw. Run :BobProject before drawing a dependency graph!'
+	endif
 	if !exists('g:bob_graph_type')
 		" using the same default as Bob currently uses (as of v0.16)
 		let g:bob_graph_type = 'd3'
