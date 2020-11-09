@@ -136,9 +136,18 @@ function! s:CheckoutPackage(package)
 	echo system('cd ' . shellescape(s:bob_base_path) . '; bob dev --checkout-only ' . a:package)
 endfunction
 
-function! s:GetStatus(package)
+function! s:GetStatus(...)
 	call s:CheckInit()
-	echo system('cd ' . shellescape(s:bob_base_path) . '; bob status --verbose --recursive ' . a:package)
+	if a:0 == 1
+		echo system('cd ' . shellescape(s:bob_base_path) . '; bob status --verbose --recursive ' . a:1)
+		return
+	endif
+
+	if empty(s:project_name)
+		throw 'I do not know what to check status on. Run :BobProject before querying the status!'
+	endif
+
+	echo system('bob --directory=' . s:bob_base_path . ' status --verbose --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . s:project_name)
 endfunction
 
 function! s:Project(bang, package, ...)

@@ -119,6 +119,11 @@ Commands                                         *vim-bob-commands*
          file names and the preview window is enabled.
          This mode is to see maximum amount of context of the search results.
 
+                                                 *vim-bob:BobStatus*
+:BobStatus [package]
+         Run `bob status` on [package] or on the current project if no
+         [package] is provided.
+
 ==============================================================================
 
 Configuration                                    *vim-bob-configuration*
