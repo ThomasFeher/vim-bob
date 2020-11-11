@@ -103,6 +103,16 @@ Commands                                         *vim-bob-commands*
          Requires that |BobProject| has been called beforehand.
          |g:bob_graph_type| controls the output format.
 
+                                                 *vim-bob:BobPersist*
+:BobPersist
+         Persist the current state into the recipes.
+         This is done by adding comments at the first line of each recipe file
+         that needs to be changed in order to persist the current state of the
+         project.
+         The comments should give useful information on what needs to be
+         changed.
+         The actual changes have to be done manually.
+
                                                  *vim-bob:BobSearch*
 :BobSearchSource [pattern]
          Search [pattern] in all source directories that belong to the current

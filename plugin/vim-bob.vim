@@ -442,6 +442,99 @@ function! s:SearchSource(pattern, bang)
 				\   a:bang)
 endfunction
 
+function! s:Persist()
+	call s:CheckInit()
+	if empty(s:project_name)
+		throw 'I do not know what to persist. Run :BobProject before persisting the current state!'
+	endif
+
+	" get the status of all repositories
+	let l:package_list = {}
+	let l:package_name = ''
+	let l:query_command = 'bob status -rv ' . s:project_config . ' '
+				\ . join(s:project_query_options, ' ') . ' ' . s:project_name
+	let l:query_result = systemlist(l:query_command)
+	echo 'Output of ''' . l:query_command . ''':'
+	echo join(l:query_result, "\n")
+	for l:line in l:query_result
+		let l:package_match = matchlist(l:line, '^>> \([^ ]*\)')
+		if len(l:package_match) > 1
+			" found new package to parse
+			let l:package_name = l:package_match[1]
+			let l:package_list[l:package_name] = {}
+		else
+			" if we are currently parsing a package
+			if ! empty(l:package_name)
+				let l:package_commit = matchlist(l:line, '^   > commit: configured: ''\w\{40}'', actual: ''\(\w\{40}\)''')
+				if len(l:package_commit) > 1
+					let l:package_list[l:package_name]['hash'] = l:package_commit[1]
+				endif
+				let l:package_tag = matchlist(l:line, '^   > tag: configured: ''[^'']*'', actual: ''\([^'']*\)''')
+				if len(l:package_tag) > 1
+					let l:package_list[l:package_name]['tag'] = l:package_tag[1]
+				endif
+				let l:package_branch = matchlist(l:line, '^   > branch: configured: ''[^'']*'', actual: ''\([^'']*\)''')
+				if len(l:package_branch) > 1
+					let l:package_list[l:package_name]['branch'] = l:package_branch[1]
+				endif
+				let l:package_modified = match(l:line, '^   > modified:')
+				if l:package_modified != -1
+					let l:package_list[l:package_name]['modified'] = 1
+				endif
+				" TODO what else can happen?
+			endif
+		endif
+	endfor
+
+	" print status
+	if len(l:package_list) > 0
+		echo len(l:package_list) . ' recipies need to be persisted! Adding comments in those recipes.'
+	else
+		echo 'Recipies are up to date. Nothing to persist.'
+	endif
+
+	" adjust recipies
+	let l:comment_begin = '# vim-bob persist:'
+	for l:package_name in keys(l:package_list)
+		let l:recipe_file = systemlist('bob --directory=' . s:bob_base_path
+					\ . ' query-recipe' . s:project_config . ' '
+					\ . join(s:project_query_options) . ' ' . l:package_name)
+		if l:recipe_file[0] !~# 'recipes\/'
+			echoerr 'internal error: first line of output of `bob query-recipe`'
+						\ . 'should contain a recipe file, but did not'
+			return
+		endif
+		let l:file_content = readfile(l:recipe_file[0])
+		let l:comment = l:comment_begin . ' ''' . l:package_name . ''':'
+		if has_key(l:package_list[l:package_name], 'modified')
+					\ && l:package_list[l:package_name]['modified']
+			let l:comment = l:comment . ' is modified, commit your changes!'
+		endif
+		if has_key(l:package_list[l:package_name], 'hash')
+			let l:comment = l:comment . ' update commit hash to '''
+						\ . l:package_list[l:package_name]['hash'] . ''''
+		endif
+		if has_key(l:package_list[l:package_name], 'tag')
+			let l:comment = l:comment . ' update tag to '''
+						\ . l:package_list[l:package_name]['tag'] . ''''
+		endif
+		if has_key(l:package_list[l:package_name], 'branch')
+			let l:comment = l:comment . ' update branch to '''
+						\ . l:package_list[l:package_name]['branch'] . ''''
+		endif
+		" put persist comment as first line
+		if l:file_content[0] =~# '^' . l:comment_begin
+			" replace an existing persist comment, it makes no sense having
+			" multiple of those in one file
+			let l:file_content[0] = l:comment
+		else
+			" put comment before the current first line
+			call insert(l:file_content, l:comment)
+		endif
+		call writefile(l:file_content, l:recipe_file[0])
+	endfor
+endfunction
+
 command! -nargs=? -complete=dir BobInit call s:Init("<args>")
 command! BobClean call s:Clean()
 command! BobGraph call s:Graph()
@@ -450,6 +543,7 @@ command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGotoAll call s
 command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
+command! BobPersist call s:Persist()
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobProject call s:Project("<bang>",<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
 command! -bang -nargs=* BobSearchSource call s:SearchSource(<q-args>, <bang>0)
