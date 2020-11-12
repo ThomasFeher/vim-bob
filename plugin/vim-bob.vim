@@ -268,6 +268,7 @@ function! s:Project(bang, package, ...)
 	let s:project_query_options = l:project_query_options
 	let s:project_config = l:project_config
 	let s:project_package_build_dirs = l:project_package_build_dirs
+	let s:project_package_src_dirs = l:project_package_src_dirs
 	let s:project_package_src_dirs_reduced = l:project_package_src_dirs_reduced
 
 	echo 'generate configuration for YouCompleteMe …'
@@ -448,6 +449,8 @@ function! s:Persist()
 		throw 'I do not know what to persist. Run :BobProject before persisting the current state!'
 	endif
 
+	" TODO check for branches, these are not persistent, only commit-IDs and
+	"      tags are
 	" get the status of all repositories
 	let l:package_list = {}
 	let l:package_name = ''
@@ -465,31 +468,110 @@ function! s:Persist()
 		else
 			" if we are currently parsing a package
 			if ! empty(l:package_name)
-				let l:package_commit = matchlist(l:line, '^   > commit: configured: ''\w\{40}'', actual: ''\(\w\{40}\)''')
-				if len(l:package_commit) > 1
-					let l:package_list[l:package_name]['hash'] = l:package_commit[1]
+				" ignoring 'u' because that is not of interest for persisting
+				" as recipe, that's rather persisting the sources (but not the
+				" currently used one)
+				" also ignoring overrides, not sure if that is correct, though
+				let l:package_status = matchlist(l:line, '^   STATUS \([ACEMNSU\?]*\)')
+				if len(l:package_status) > 1
+					let l:package_list[l:package_name]['status'] = l:package_status[1]
+					if l:package_status[1] =~# '[ACEN\?]'
+						let l:package_list[l:package_name]['error'] = 1
+					else
+						let l:package_list[l:package_name]['error'] = 0
+					endif
+					if l:package_status[1] =~# 'M'
+						let l:package_list[l:package_name]['modified'] = 1
+					else
+						let l:package_list[l:package_name]['modified'] = 0
+					endif
+					if l:package_status[1] =~# 'S'
+						let l:package_list[l:package_name]['switched'] = 1
+					else
+						let l:package_list[l:package_name]['switched'] = 0
+					endif
+					if l:package_status[1] =~# 'U'
+						let l:package_list[l:package_name]['unpushed'] = 1
+					else
+						let l:package_list[l:package_name]['unpushed'] = 0
+					endif
 				endif
-				let l:package_tag = matchlist(l:line, '^   > tag: configured: ''[^'']*'', actual: ''\([^'']*\)''')
-				if len(l:package_tag) > 1
-					let l:package_list[l:package_name]['tag'] = l:package_tag[1]
-				endif
-				let l:package_branch = matchlist(l:line, '^   > branch: configured: ''[^'']*'', actual: ''\([^'']*\)''')
-				if len(l:package_branch) > 1
-					let l:package_list[l:package_name]['branch'] = l:package_branch[1]
-				endif
-				let l:package_modified = match(l:line, '^   > modified:')
-				if l:package_modified != -1
-					let l:package_list[l:package_name]['modified'] = 1
-				endif
-				" TODO what else can happen?
 			endif
 		endif
 	endfor
+	" find recipes that specify a branch
+	let l:query_command = 'bob query-scm ' . s:project_config . ' '
+				\ . join(s:project_query_options, ' ')
+				\ . ' -f git="git {package} {branch}"'
+				\ . join(keys(s:project_package_src_dirs), ' ')
+	let l:query_result = systemlist(l:query_command)
+	for l:line in l:query_result
+		" first group is the package name, second group ist the configured
+		" branch, if any
+		let l:match = matchlist(l:line, 'git \(\S*\) \(\S*\)')
+		let l:package = l:match[1]
+		if len(l:match) == 3
+			let l:branch = l:match[2]
+			l:package_list[l:package]['branch']['name'] = l:branch
+			" get commit ID and tags pointing at the current commit, to
+			" provide them as alternative to the branch
+			let l:result = systemlist('git -C '.s:project_package_src_dirs[l:package].' rev-parse HEAD')
+			let l:package_list[l:package]['branch']['commit'] = l:result[0]
+			let l:result = systemlist('git -C '.s:project_package_src_dirs[l:package].' tag --points-at HEAD')
+			let l:package_list[l:package]['branch']['tag'] = l:result
+		endif
+	endfor
 
+	" do some statistics
+	let l:error_list = []
+	let l:repo_action_list = []
+	let l:recipe_change_list = []
+	let l:branch_list = []
+	for l:package in items(l:package_list)
+		" count errors
+		if l:package[1]['error']
+			call add(l:error_list, l:package[0])
+		endif
+		" count necessary actions on source repositories
+		if l:package[1]['modified'] || l:package[1]['unpushed']
+			call add(l:repo_action_list, l:package[0])
+		endif
+		" count necessary recipe changes
+		if l:package[1]['switched']
+			call add(l:recipe_change_list, l:package[0])
+		endif
+		" count recipes that specify branches
+		if l:package[1]['branch']
+			call add(l:branch_list, l:package[0])
+		endif
+	endfor
 	" print status
-	if len(l:package_list) > 0
-		echo len(l:package_list) . ' recipies need to be persisted! Adding comments in those recipes.'
-	else
+	echo ''
+	echo len(l:error_list) . ' repositories are in erronious state'
+	if len(l:error_list) > 0
+		echo '  ''' . join(l:error_list, ''', ''') . ''''
+		echo 'see result of `bob status` for more information'
+	endif
+	echo len(l:repo_action_list) . ' repositories need action'
+	if len(l:repo_action_list) > 0
+		echo '  ''' . join(l:repo_action_list, ''', ''') . ''''
+		echo '  see info comment at the first line of the recipe, commit changes and push them, delete comment afterwards'
+		echo '  then re-run :BobPersist to check for success'
+	endif
+	echo len(l:recipe_change_list) . ' recipies need changes'
+	if len(l:recipe_change_list) > 0
+		echo '  ''' . join(l:recipe_change_list, ''', ''') . ''''
+		echo '  change recipes according to info comment at the first line and delete the comment afterwards'
+		echo '  then re-run :BobPersist to check for success'
+	endif
+	echo len(l:branch_list) . '  recipes configure branches'
+	if len(l:branch_list) > 0
+		echo '  ''' . join(l:recipe_change_list, ''', ''') . ''''
+		echo '  branches are not persistent'
+		echo '  change recipes according to info comment at the first line and delet the comment afterwards'
+		echo '  then re-run :BobPersist to check for success'
+	endif
+	if len(l:error_list) == 0 && len(l:repo_action_list) == 0 && len(l:recipe_change_list) == 0
 		echo 'Recipies are up to date. Nothing to persist.'
 	endif
 
@@ -506,21 +588,33 @@ function! s:Persist()
 		endif
 		let l:file_content = readfile(l:recipe_file[0])
 		let l:comment = l:comment_begin . ' ''' . l:package_name . ''':'
-		if has_key(l:package_list[l:package_name], 'modified')
-					\ && l:package_list[l:package_name]['modified']
-			let l:comment = l:comment . ' is modified, commit your changes!'
-		endif
-		if has_key(l:package_list[l:package_name], 'hash')
-			let l:comment = l:comment . ' update commit hash to '''
-						\ . l:package_list[l:package_name]['hash'] . ''''
-		endif
-		if has_key(l:package_list[l:package_name], 'tag')
-			let l:comment = l:comment . ' update tag to '''
-						\ . l:package_list[l:package_name]['tag'] . ''''
-		endif
-		if has_key(l:package_list[l:package_name], 'branch')
-			let l:comment = l:comment . ' update branch to '''
-						\ . l:package_list[l:package_name]['branch'] . ''''
+		if l:package_list[l:package_name]['modified']
+			let l:comment = l:comment . ' Commit your changes!'
+		elseif l:package_list[l:package_name]['switched']
+			let l:dir = s:project_package_src_dirs[l:package_name]
+			let l:current_commit = trim(system('cd '.l:dir.' && git rev-parse HEAD'))
+			let l:current_tags = trim(system('cd '.l:dir.' && git tag --points-at HEAD'))
+			let l:comment = l:comment . ' Update SCM in recipe to commit ID '''
+						\ . l:current_commit . ''''
+			if !empty(l:current_tags)
+				let l:comment = l:comment . ' or to tag(s) '''
+							\ . substitute(l:current_tags, ' ', ''' ''', 'g') . ''''
+			endif
+			let l:comment = l:comment . '!'
+		elseif l:package_list[l:package_name]['unpushed']
+			let l:comment = l:comment . ' Push to remote!'
+		elseif has_key(l:package_list[l:package_name], 'branch')
+			let l:comment = l:comment . ' Change from branch to commit '''
+						\ . l:package_list[l:package_name]['branch']['commit']
+			if has_key(l:package_list[l:package_name]['branch'], 'tag')
+				if len(l:package_list[l:package_name]['branch']['tag']) == 1
+					let l:comment = l:comment . ' or to tag '''
+								\ . l:package_list[l:package_name]['branch']['tag'] . ''''
+				elseif len(l:package_list[l:package_name]['branch']['tag']) > 1
+					let l:comment = l:comment . ' or to one of the tags: '''
+								\ . join(l:package_list[l:package_name]['branch']['tag'], ''', ''') . ''''
+				endif
+			endif
 		endif
 		" put persist comment as first line
 		if l:file_content[0] =~# '^' . l:comment_begin
