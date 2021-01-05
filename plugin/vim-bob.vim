@@ -151,7 +151,12 @@ endfunction
 
 function! s:Project(bang, package, ...)
 	call s:CheckInit()
-	call s:DevImpl(a:bang, a:package, a:000)
+	try
+		call s:DevImpl(a:bang, a:package, a:000)
+	catch
+		echoerr 'Running Bob failed. No new project was created.'
+		return
+	endtry
 
 	" set already known project properties locally, so they are usable
 	" subsequently
@@ -308,7 +313,20 @@ function! s:DevImpl(bang, package, optionals)
 		let &makeprg = l:command . l:config . ' ' . l:args
 	endif
 
-	execute 'make'.a:bang
+	try
+		" we need to get the error code from the actual make command instead
+		" of the `tee` command, therefore modifying &shellpipe temporarily
+		let shellpipe = &shellpipe
+		if &shellpipe ==# '2>&1| tee'
+			let &shellpipe = '2>&1| tee %s;exit ${PIPESTATUS[0]}'
+		endif
+		execute 'make'.a:bang
+	finally
+		let &shellpipe = shellpipe
+	endtry
+	if v:shell_error
+		throw 'Running Bob failed.'
+	endif
 endfunction
 
 function! s:RemoveWarnings(bob_output)
