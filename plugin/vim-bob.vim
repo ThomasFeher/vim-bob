@@ -94,7 +94,7 @@ function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
 	endif
 endfunction
 
-function! s:GotoPackageSourceDir(bang, ...)
+function! s:GotoPackageSourceDir(bang, doAll, ...)
 	call s:CheckInit()
 	if a:bang
 		let l:command = 'cd '
@@ -104,7 +104,7 @@ function! s:GotoPackageSourceDir(bang, ...)
 	if a:0 == 0
 		execute l:command . s:bob_base_path
 	elseif a:0 == 1
-		if exists('s:project_package_src_dirs_reduced')
+		if ! a:doAll && exists('s:project_package_src_dirs_reduced')
 			" in project mode, we already cached the source directories
 			let l:dir = s:project_package_src_dirs_reduced[a:1]
 		else
@@ -661,8 +661,8 @@ endfunction
 command! -nargs=? -complete=dir BobInit call s:Init("<args>")
 command! BobClean call s:Clean()
 command! BobGraph call s:Graph()
-command! -bang -nargs=? -complete=custom,s:ProjectPackageComplete BobGoto call s:GotoPackageSourceDir("<bang>", <f-args>)
-command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGotoAll call s:GotoPackageSourceDir("<bang>", <f-args>)
+command! -bang -nargs=? -complete=custom,s:ProjectPackageComplete BobGoto call s:GotoPackageSourceDir("<bang>", 0, <f-args>)
+command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGotoAll call s:GotoPackageSourceDir("<bang>", 1, <f-args>)
 command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
