@@ -174,7 +174,9 @@ function! s:Project(bang, package, ...)
 	" generate list of packages needed by that root package
 	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
+	" add root package to the list
 	let l:list = split(l:list, "\n")
+	call add(l:list, a:package)
 	let l:project_package_src_dirs = {}
 	echo 'gather package paths …'
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
@@ -232,10 +234,6 @@ function! s:Project(bang, package, ...)
 	else
 		let l:project_package_src_dirs_reduced = l:project_package_src_dirs
 	endif
-	" add the root recipe to the lists
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package
-	" the path contains a trailing newline, which is removed by substitute()
-	let l:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", '', '')
 
 	" The long package names are used for specifying the build directories,
 	" because in theory a package could be build multiple times with different
@@ -519,23 +517,31 @@ function! s:Persist()
 	" find recipes that specify a branch
 	let l:query_command = 'bob query-scm ' . s:project_config . ' '
 				\ . join(s:project_query_options, ' ')
-				\ . ' -f git="git {package} {branch}"'
-				\ . join(keys(s:project_package_src_dirs), ' ')
+				\ . ' -r -f git="git {package} {branch}" '
+				\ . s:project_name
+				"\ . join(keys(s:project_package_src_dirs), ' ')
 	let l:query_result = systemlist(l:query_command)
 	for l:line in l:query_result
 		" first group is the package name, second group ist the configured
 		" branch, if any
 		let l:match = matchlist(l:line, 'git \(\S*\) \(\S*\)')
 		let l:package = l:match[1]
-		if len(l:match) == 3
+		if ! empty(l:match[2])
 			let l:branch = l:match[2]
-			l:package_list[l:package]['branch']['name'] = l:branch
+			if ! has_key(l:package_list, l:package)
+				let l:package_list[l:package] = {}
+			endif
+			let l:package_list[l:package]['branched'] = 1
+			let l:package_list[l:package]['branch'] = {}
+			let l:package_list[l:package]['branch']['name'] = l:branch
 			" get commit ID and tags pointing at the current commit, to
 			" provide them as alternative to the branch
 			let l:result = systemlist('git -C '.s:project_package_src_dirs[l:package].' rev-parse HEAD')
 			let l:package_list[l:package]['branch']['commit'] = l:result[0]
 			let l:result = systemlist('git -C '.s:project_package_src_dirs[l:package].' tag --points-at HEAD')
 			let l:package_list[l:package]['branch']['tag'] = l:result
+		"else
+			"let l:package_list[l:package]['branched'] = 0
 		endif
 	endfor
 
@@ -546,19 +552,20 @@ function! s:Persist()
 	let l:branch_list = []
 	for l:package in items(l:package_list)
 		" count errors
-		if l:package[1]['error']
+		if has_key(l:package[1], 'error') && l:package[1]['error']
 			call add(l:error_list, l:package[0])
 		endif
 		" count necessary actions on source repositories
-		if l:package[1]['modified'] || l:package[1]['unpushed']
+		if (has_key(l:package[1], 'modified') && l:package[1]['modified'])
+					\ || (has_key(l:package[1], 'unpushed') && l:package[1]['unpushed'])
 			call add(l:repo_action_list, l:package[0])
 		endif
 		" count necessary recipe changes
-		if l:package[1]['switched']
+		if has_key(l:package[1], 'switched') && l:package[1]['switched']
 			call add(l:recipe_change_list, l:package[0])
 		endif
 		" count recipes that specify branches
-		if l:package[1]['branch']
+		if has_key(l:package[1], 'branched') && l:package[1]['branched']
 			call add(l:branch_list, l:package[0])
 		endif
 	endfor
@@ -583,7 +590,7 @@ function! s:Persist()
 	endif
 	echo len(l:branch_list) . '  recipes configure branches'
 	if len(l:branch_list) > 0
-		echo '  ''' . join(l:recipe_change_list, ''', ''') . ''''
+		echo '  ''' . join(l:branch_list, ''', ''') . ''''
 		echo '  branches are not persistent'
 		echo '  change recipes according to info comment at the first line and delet the comment afterwards'
 		echo '  then re-run :BobPersist to check for success'
@@ -595,19 +602,24 @@ function! s:Persist()
 	" adjust recipies
 	let l:comment_begin = '# vim-bob persist:'
 	for l:package_name in keys(l:package_list)
-		let l:recipe_file = systemlist('bob --directory=' . s:bob_base_path
+		let l:query = 'bob --directory=' . s:bob_base_path
 					\ . ' query-recipe' . s:project_config . ' '
-					\ . join(s:project_query_options) . ' ' . l:package_name)
-		if l:recipe_file[0] !~# 'recipes\/'
+					\ . join(s:project_query_options) . ' ' . l:package_name
+		let l:query_result = systemlist(l:query)
+		let l:idx = match(l:query_result, 'recipes\/')
+		if l:idx == -1
 			echoerr 'internal error: first line of output of `bob query-recipe`'
-						\ . 'should contain a recipe file, but did not'
+						\ . 'should contain a recipe file, but did not, '
+						\ . 'query was: ' . l:query . ' result was: '
+						\ . join(l:query_result, ' --- ')
 			return
 		endif
-		let l:file_content = readfile(l:recipe_file[0])
+		let l:recipe_file = l:query_result[l:idx]
+		let l:file_content = readfile(l:recipe_file)
 		let l:comment = l:comment_begin . ' ''' . l:package_name . ''':'
-		if l:package_list[l:package_name]['modified']
+		if has_key(l:package_list[l:package_name], 'modified') && l:package_list[l:package_name]['modified']
 			let l:comment = l:comment . ' Commit your changes!'
-		elseif l:package_list[l:package_name]['switched']
+		elseif has_key(l:package_list[l:package_name], 'switched') && l:package_list[l:package_name]['switched']
 			let l:dir = s:project_package_src_dirs[l:package_name]
 			let l:current_commit = trim(system('cd '.l:dir.' && git rev-parse HEAD'))
 			let l:current_tags = trim(system('cd '.l:dir.' && git tag --points-at HEAD'))
@@ -618,11 +630,11 @@ function! s:Persist()
 							\ . substitute(l:current_tags, ' ', ''' ''', 'g') . ''''
 			endif
 			let l:comment = l:comment . '!'
-		elseif l:package_list[l:package_name]['unpushed']
+		elseif has_key(l:package_list[l:package_name], 'unpushed') && l:package_list[l:package_name]['unpushed']
 			let l:comment = l:comment . ' Push to remote!'
 		elseif has_key(l:package_list[l:package_name], 'branch')
 			let l:comment = l:comment . ' Change from branch to commit '''
-						\ . l:package_list[l:package_name]['branch']['commit']
+						\ . l:package_list[l:package_name]['branch']['commit'] . ''''
 			if has_key(l:package_list[l:package_name]['branch'], 'tag')
 				if len(l:package_list[l:package_name]['branch']['tag']) == 1
 					let l:comment = l:comment . ' or to tag '''
@@ -642,7 +654,7 @@ function! s:Persist()
 			" put comment before the current first line
 			call insert(l:file_content, l:comment)
 		endif
-		call writefile(l:file_content, l:recipe_file[0])
+		call writefile(l:file_content, l:recipe_file)
 	endfor
 endfunction
 
