@@ -595,7 +595,7 @@ function! s:Persist()
 		echo '  change recipes according to info comment at the first line and delet the comment afterwards'
 		echo '  then re-run :BobPersist to check for success'
 	endif
-	if len(l:error_list) == 0 && len(l:repo_action_list) == 0 && len(l:recipe_change_list) == 0
+	if len(l:error_list) == 0 && len(l:repo_action_list) == 0 && len(l:recipe_change_list) == 0 && len(l:branch_list) == 0
 		echo 'Recipies are up to date. Nothing to persist.'
 	endif
 
