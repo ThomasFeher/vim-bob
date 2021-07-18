@@ -626,8 +626,8 @@ function! s:Persist()
 			let l:comment = l:comment . ' Update SCM in recipe to commit ID '''
 						\ . l:current_commit . ''''
 			if !empty(l:current_tags)
-				let l:comment = l:comment . ' or to tag(s) '''
-							\ . substitute(l:current_tags, ' ', ''' ''', 'g') . ''''
+				let l:comment = l:comment . ' or to tag(s) ''refs/tags/'
+							\ . substitute(l:current_tags, ' ', ''' ''refs/tags/', 'g') . ''''
 			endif
 			let l:comment = l:comment . '!'
 		elseif has_key(l:package_list[l:package_name], 'unpushed') && l:package_list[l:package_name]['unpushed']
@@ -640,8 +640,8 @@ function! s:Persist()
 					let l:comment = l:comment . ' or to tag '''
 								\ . l:package_list[l:package_name]['branch']['tag'] . ''''
 				elseif len(l:package_list[l:package_name]['branch']['tag']) > 1
-					let l:comment = l:comment . ' or to one of the tags: '''
-								\ . join(l:package_list[l:package_name]['branch']['tag'], ''', ''') . ''''
+					let l:comment = l:comment . ' or to one of the tags: ''refs/tags/'
+								\ . join(l:package_list[l:package_name]['branch']['tag'], ''', ''refs/tags/') . ''''
 				endif
 			endif
 		endif
