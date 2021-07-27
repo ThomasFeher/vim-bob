@@ -18,6 +18,8 @@ The usual workflow is as follows:
   specified package.
 * Start editing files of that package.
 * Run |:make| to rebuild the project.
+* Alternatively to |:BobGoto| use |:BobOpen| to open a file from a certain
+  package without changing the working directory.
 
 |:BobProject| automatically prevents writing to files in `dev/build/` and
 `dev/dist`, because these files will be overwritten by Bob during a build and
@@ -67,6 +69,23 @@ Commands                                         *vim-bob-commands*
 :BobGotoAll! [package]
           Like ":BobGotoAll" but sets the current working directory globally.
 
+                                                 *vim-bob:BobOpen*
+:BobOpen [package]
+         Open a file selector window where alle files of [package] are
+         provided. The selected file will be opened.
+         Requires one of the supported file selection backends (fzf.vim and
+         telescope.nvim) to be installed.
+         If no package is provided the path of the recipe repository is used
+         as search path for the file selector. In case the default FZF command
+         for search is used (`find`) this can be very much files including all
+         the files the `dev` and `work` folder. In order to prevent this use a
+         different search tool like `fd` or `ripgrep` or adjust the options of
+         `find` accordingly setting the environment variable
+         `FZF_DEFAULT_COMMAND`.
+         Examples for using `fd` as search command for FZF:
+         using shell: `export FZF_DEFAULT_COMMAND="fd --type f "`
+         using init.vim: `let $FZF_DEFAULT_COMMAND = "fd --type f "`
+
                                                  *vim-bob:BobDev*
 :BobDev ([package] ([configuration] ([parameters])))
          Build [package] with [configuration] in development mode.
@@ -91,6 +110,9 @@ Commands                                         *vim-bob-commands*
          the build system to generate a "compile_commands.json" file in the
          build directory. CMake will do this if called with
          "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".
+         Additionally autocmds are created that set the working directory of
+         the window to the root directory of the source directory
+         (the directory `workspace` in `dev/src`) of the current file.
 
                                                  *vim-bob:BobClean*
 :BobClean

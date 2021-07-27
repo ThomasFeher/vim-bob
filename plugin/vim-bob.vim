@@ -271,6 +271,13 @@ function! s:Project(bang, package, ...)
 		" using 'acwrite' so we can present a meaningful error message
 		execute 'autocmd BufReadPost ' . l:roPath . ' setlocal buftype=acwrite'
 		execute 'autocmd BufWriteCmd ' . l:roPath . ' echoerr "' . l:errMsg '"'
+		" set the local working directory to the root source dir of the
+		" respective package
+		execute 'autocmd BufWinEnter ' . s:bob_base_path . '/* lcd ' . s:bob_base_path
+		for l:path in values(l:project_package_src_dirs_reduced)
+			let l:path_full = s:bob_base_path . '/' . l:path
+			execute 'autocmd BufWinEnter ' . l:path_full . '/* lcd ' . l:path_full
+		endfor
 	augroup END
 	let s:project_name = l:project_name
 	let s:project_options = l:project_options
@@ -665,6 +672,43 @@ function! s:Persist()
 	endfor
 endfunction
 
+function! s:OpenTelescope(dir)
+" seems like we can only access global variables in Lua
+let b:dir = a:dir
+lua << EOF
+require('telescope.builtin').find_files({ search_dirs = {vim.b.dir} })
+EOF
+unlet! b:dir
+endfunction
+
+function! s:OpenFzf(dir)
+	" moving to the directory before calling FZF because FZF will try to
+	" remain in the directory it was before being called, which does revert
+	" the effect of the vim-bob autocmd (see FIXME comment in fzf.vim line
+	" 590)
+	" TODO how to avoid being in that dir, when FZF was abortet with <ESC>?
+	execute 'lcd ' . a:dir
+	call fzf#run({'dir': a:dir, 'sink': 'e'})
+endfunction
+
+function! s:Open(...)
+	if a:0 == 0
+		let l:dir = s:bob_base_path
+	else
+		let l:dir = s:bob_base_path . '/' . s:project_package_src_dirs_reduced[a:1]
+	endif
+	" Prefering fzf.vim over telescope.nvim because for fzf we can provide a
+	" path which avoids showing the complete path from the recipe repository
+	" to the source repository during selection.
+	if exists('g:loaded_fzf_vim')
+		return s:OpenFzf(l:dir)
+	endif
+	if exists('g:loaded_telescope')
+		return s:OpenTelescope(l:dir)
+	endif
+	message('No file selection backend found. Install fzf.vim or telescope.nvim to use :BobOpen')
+endfunction
+
 command! -nargs=? -complete=dir BobInit call s:Init("<args>")
 command! BobClean call s:Clean()
 command! BobGraph call s:Graph()
@@ -677,3 +721,4 @@ command! BobPersist call s:Persist()
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobProject call s:Project("<bang>",<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
 command! -bang -nargs=* BobSearchSource call s:SearchSource(<q-args>, <bang>0)
+command! -nargs=? -complete=custom,s:ProjectPackageComplete BobOpen call s:Open(<f-args>)
