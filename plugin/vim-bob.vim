@@ -23,6 +23,9 @@ endif
 if !exists('g:bob_auto_complete_items')
 	let g:bob_auto_complete_items = []
 endif
+if !exists('g:bob_verbose')
+	let g:bob_verbose = 0
+endif
 
 function! s:RemoveInfoMessages(text)
 	let l:text = a:text
@@ -186,9 +189,13 @@ function! s:Project(bang, package, ...)
 	for l:package in l:list
 		let l:matches = matchlist(l:result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
 		if empty(l:matches)
-			echom 'skipped caching of ' . l:package
+			if g:bob_verbose
+				echom 'skipped caching of ' . l:package
+			endif
 		else
-			echom 'caching ' . l:package . ' as ' . l:matches[1]
+			if g:bob_verbose
+				echom 'caching ' . l:package . ' as ' . l:matches[1]
+			endif
 			let l:project_package_src_dirs[l:package] = l:matches[2]
 			let l:project_package_build_dirs[l:package] = l:matches[3]
 		endif
