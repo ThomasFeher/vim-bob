@@ -3,9 +3,6 @@ let s:is_initialized = 0
 " get path of the current script, which is also the path to the YCM config
 " template file
 let s:script_path = expand('<sfile>:h')
-" list of additional parameters for `BobDev` and `BobProject` used for
-" auto-completion
-let s:additional_params = ['-DBUILD_TYPE=Release', '-DBUILD_TYPE=Debug']
 " command line options that are not suitable for calling bob-querry commands
 let s:query_option_filter = ['-b', '--build-only', '-v', '--verbose', '--clean', '--force']
 " the name of the project, effectively the name of the Bob package
@@ -23,6 +20,12 @@ let s:project_query_options = []
 if !exists('g:bob_reduce_goto_list')
 	let g:bob_reduce_goto_list = 1
 endif
+if !exists('g:bob_auto_complete_items')
+	let g:bob_auto_complete_items = []
+endif
+if !exists('g:bob_verbose')
+	let g:bob_verbose = 0
+endif
 
 function! s:RemoveInfoMessages(text)
 	let l:text = a:text
@@ -32,20 +35,26 @@ function! s:RemoveInfoMessages(text)
 	return l:text
 endfunction
 
-function! s:Init()
-	let s:bob_package_list = system('bob ls')
-	let s:bob_package_tree_list = system('bob ls -pr')
-	if match(s:bob_package_list, 'Parse error:') != -1
-		echo 'vim-bob not initialized, output from bob ls:'
-		echo s:bob_package_list
+function! s:Init(path)
+	let l:bob_base_path = empty(a:path) ? getcwd() : fnamemodify(a:path, ':p')
+	let l:bob_package_list = system('bob --directory=' . l:bob_base_path . ' ls')
+	let l:bob_package_tree_list = system('bob --directory=' . l:bob_base_path . ' ls -pr')
+	if v:shell_error
+		echoerr "vim-bob not initialized, output from bob ls:\n" . join(l:bob_package_list, "\n")
 		return
 	endif
-	let s:bob_package_list = s:RemoveInfoMessages(s:bob_package_list)
-	let s:bob_package_tree_list = s:RemoveInfoMessages(s:bob_package_tree_list)
-	let s:bob_base_path = getcwd()
-	let s:bob_config_path = get(g:, 'bob_config_path', '')
-	let s:bob_config_path_abs = s:bob_base_path.'/'.s:bob_config_path
-	let s:config_names = map(globpath(s:bob_config_path_abs, '*.yaml', 0, 1), 'fnamemodify(v:val, ":t:r")')
+	let l:bob_package_list = s:RemoveInfoMessages(l:bob_package_list)
+	let l:bob_package_tree_list = s:RemoveInfoMessages(l:bob_package_tree_list)
+	let l:bob_config_path = get(g:, 'bob_config_path', '')
+	let l:bob_config_path_abs = l:bob_base_path.'/'.l:bob_config_path
+	let l:config_names = map(globpath(l:bob_config_path_abs, '*.yaml', 0, 1), 'fnamemodify(v:val, ":t:r")')
+	" everything went right, now persist the new state
+	let s:bob_base_path = l:bob_base_path
+	let s:bob_package_list = l:bob_package_list
+	let s:bob_package_tree_list = l:bob_package_tree_list
+	let s:bob_config_path = l:bob_config_path
+	let s:bob_config_path_abs = l:bob_config_path_abs
+	let s:config_names = l:config_names
 	let s:is_initialized = 1
 endfunction
 
@@ -84,11 +93,11 @@ function! s:PackageAndConfigComplete(ArgLead, CmdLine, CursorPos)
 	elseif len(l:command_list) < 4
 		return join(s:config_names, "\n")
 	else
-		return join(s:additional_params, "\n")
+		return join(g:bob_auto_complete_items, "\n")
 	endif
 endfunction
 
-function! s:GotoPackageSourceDir(bang, ...)
+function! s:GotoPackageSourceDir(bang, doAll, ...)
 	call s:CheckInit()
 	if a:bang
 		let l:command = 'cd '
@@ -98,7 +107,7 @@ function! s:GotoPackageSourceDir(bang, ...)
 	if a:0 == 0
 		execute l:command . s:bob_base_path
 	elseif a:0 == 1
-		if exists('s:project_package_src_dirs_reduced')
+		if ! a:doAll && exists('s:project_package_src_dirs_reduced')
 			" in project mode, we already cached the source directories
 			let l:dir = s:project_package_src_dirs_reduced[a:1]
 		else
@@ -129,62 +138,66 @@ function! s:CheckoutPackage(package)
 	echo system('cd ' . shellescape(s:bob_base_path) . '; bob dev --checkout-only ' . a:package)
 endfunction
 
-function! s:GetStatus(package)
+function! s:GetStatus(...)
 	call s:CheckInit()
-	echo system('cd ' . shellescape(s:bob_base_path) . '; bob status --verbose --recursive ' . a:package)
+	if a:0 == 1
+		echo system('cd ' . shellescape(s:bob_base_path) . '; bob status --verbose --recursive ' . a:1)
+		return
+	endif
+
+	if empty(s:project_name)
+		throw 'I do not know what to check status on. Run :BobProject before querying the status!'
+	endif
+
+	echo system('bob --directory=' . s:bob_base_path . ' status --verbose --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . s:project_name)
 endfunction
 
 function! s:Project(bang, package, ...)
 	call s:CheckInit()
-	call s:DevImpl(a:bang, a:package, a:000)
-	augroup bob
-		autocmd!
-		" make generated files not writeable, in order to prevent editing the
-		" wrong file and losing the changes during Bob's rebuild
-		let s:roPath = '*/dev/dist/*,*/dev/build/*'
-		let s:errMsg = 'vim-bob: You are trying to edit a generated file.'
-					\ .' If you really want to write to it use `set buftype=`'
-					\ .' and proceed, but rebuilding will probably delete these'
-					\ .' changes!'
-		" using 'acwrite' so we can present a meaningful error message
-		autocmd BufReadPost s:roPath set buftype=acwrite
-		autocmd BufWriteCmd s:roPath echoerr s:errMsg
-	augroup END
+	try
+		call s:DevImpl(a:bang, a:package, a:000)
+	catch
+		echoerr 'Running Bob failed. No new project was created.'
+		return
+	endtry
 
-	" set already known project properties globally, so they are usable
+	" set already known project properties locally, so they are usable
 	" subsequently
-	" TODO use local variable so we can restore the global state in case an
-	"      error occurs subsequently which does not allow proper loading of
-	"      the project
-	let s:project_name = a:package
+	let l:project_name = a:package
 	" the first option is always the configuration (without the '-c'), which
 	" is stored separately in s:project_config
-	let s:project_options = copy(a:000[1:-1])
-	let s:project_query_options = filter(copy(s:project_options[0:-1]), 'match(s:query_option_filter, v:val) == -1')
+	let l:project_options = copy(a:000[1:-1])
+	let l:project_query_options = filter(copy(l:project_options[0:-1]), 'match(s:query_option_filter, v:val) == -1')
 	if a:0 == 0
-		let s:project_config = ''
+		let l:project_config = ''
 	else
-		let s:project_config = ' -c ' . s:bob_config_path . '/' . a:1
+		let l:project_config = ' -c ' . s:bob_config_path . '/' . a:1
 	endif
 
 	" generate list of packages needed by that root package
-	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package)
+	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
+	" add root package to the list
 	let l:list = split(l:list, "\n")
+	call add(l:list, a:package)
 	let l:project_package_src_dirs = {}
 	echo 'gather package paths …'
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
 	let l:idx = 0
-	let s:project_package_build_dirs = {}
+	let l:project_package_build_dirs = {}
 	for l:package in l:list
 		let l:matches = matchlist(l:result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
 		if empty(l:matches)
-			echom 'skipped caching of ' . l:package
+			if g:bob_verbose
+				echom 'skipped caching of ' . l:package
+			endif
 		else
-			echom 'caching ' . l:package . ' as ' . l:matches[1]
+			if g:bob_verbose
+				echom 'caching ' . l:package . ' as ' . l:matches[1]
+			endif
 			let l:project_package_src_dirs[l:package] = l:matches[2]
-			let s:project_package_build_dirs[l:package] = l:matches[3]
+			let l:project_package_build_dirs[l:package] = l:matches[3]
 		endif
 		let idx += 1
 	endfor
@@ -192,7 +205,7 @@ function! s:Project(bang, package, ...)
 	let l:map_short_to_long_names = {}
 	" TODO the query-path does already reduce the list, we its only necessary
 	" to remove duplicate entries from l:project_package_src_dirs and
-	" s:project_package_build_dirs
+	" l:project_package_build_dirs
 	if g:bob_reduce_goto_list
 		" generate map of all short packages names associated to a list of
 		" according long packages names
@@ -206,7 +219,7 @@ function! s:Project(bang, package, ...)
 			endif
 		endfor
 		" check if the directories are equal for each short name package
-		let s:project_package_src_dirs_reduced = {}
+		let l:project_package_src_dirs_reduced = {}
 		for l:short_name in keys(l:map_short_to_long_names)
 			let l:all_dirs = []
 			for l:long_name in l:map_short_to_long_names[l:short_name]
@@ -215,23 +228,19 @@ function! s:Project(bang, package, ...)
 			if len(uniq(sort(l:all_dirs))) == 1
 				" all directories are equal, therefor store only the short
 				" name and the according directory
-				let s:project_package_src_dirs_reduced[l:short_name] = l:project_package_src_dirs[l:map_short_to_long_names[l:short_name][0]]
+				let l:project_package_src_dirs_reduced[l:short_name] = l:project_package_src_dirs[l:map_short_to_long_names[l:short_name][0]]
 			else
 				" at least one package has a different directory, therefor
 				" store all variants with there complete package name and the
 				" according directories
 				for l:long_name in l:map_short_to_long_names[l:short_name]
-					let s:project_package_src_dirs_reduced[l:long_name] = l:project_package_src_dirs[l:long_name]
+					let l:project_package_src_dirs_reduced[l:long_name] = l:project_package_src_dirs[l:long_name]
 				endfor
 			endif
 		endfor
 	else
-		let s:project_package_src_dirs_reduced = l:project_package_src_dirs
+		let l:project_package_src_dirs_reduced = l:project_package_src_dirs
 	endif
-	" add the root recipe to the lists
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package
-	" the path contains a trailing newline, which is removed by substitute()
-	let s:project_package_src_dirs_reduced[a:package] = substitute(s:RemoveInfoMessages(system(l:command)), "\n", '', '')
 
 	" The long package names are used for specifying the build directories,
 	" because in theory a package could be build multiple times with different
@@ -248,6 +257,28 @@ function! s:Project(bang, package, ...)
 	" because we would have to generate multiple compilation databases, but it
 	" is not possible to determine for which target a source file should be
 	" checked if it is used in multiple targets.
+
+	" persist new state
+	augroup bob
+		autocmd!
+		" make generated files not writeable, in order to prevent editing the
+		" wrong file and losing the changes during Bob's rebuild
+		let l:roPath = s:bob_base_path . '/dev/dist/*,' . s:bob_base_path . '/dev/build/*'
+		let l:errMsg = 'vim-bob: You are trying to edit a generated file.'
+					\ .' If you really want to write to it use `set buftype=`'
+					\ .' and proceed, but rebuilding will probably delete these'
+					\ .' changes!'
+		" using 'acwrite' so we can present a meaningful error message
+		execute 'autocmd BufReadPost ' . l:roPath . ' setlocal buftype=acwrite'
+		execute 'autocmd BufWriteCmd ' . l:roPath . ' echoerr "' . l:errMsg '"'
+	augroup END
+	let s:project_name = l:project_name
+	let s:project_options = l:project_options
+	let s:project_query_options = l:project_query_options
+	let s:project_config = l:project_config
+	let s:project_package_build_dirs = l:project_package_build_dirs
+	let s:project_package_src_dirs = l:project_package_src_dirs
+	let s:project_package_src_dirs_reduced = l:project_package_src_dirs_reduced
 
 	echo 'generate configuration for YouCompleteMe …'
 	call s:Ycm(a:package)
@@ -289,7 +320,20 @@ function! s:DevImpl(bang, package, optionals)
 		let &makeprg = l:command . l:config . ' ' . l:args
 	endif
 
-	execute 'make'.a:bang
+	try
+		" we need to get the error code from the actual make command instead
+		" of the `tee` command, therefore modifying &shellpipe temporarily
+		let shellpipe = &shellpipe
+		if &shellpipe ==# '2>&1| tee'
+			let &shellpipe = '2>&1| tee %s;exit ${PIPESTATUS[0]}'
+		endif
+		execute 'make'.a:bang
+	finally
+		let &shellpipe = shellpipe
+	endtry
+	if v:shell_error
+		throw 'Running Bob failed.'
+	endif
 endfunction
 
 function! s:RemoveWarnings(bob_output)
@@ -374,6 +418,9 @@ function! s:HandleError(job_id, data, event)
 endfunction
 function! s:Graph()
 	call s:CheckInit()
+	if empty(s:project_name)
+		throw 'I do not know what to draw. Run :BobProject before drawing a dependency graph!'
+	endif
 	if !exists('g:bob_graph_type')
 		" using the same default as Bob currently uses (as of v0.16)
 		let g:bob_graph_type = 'd3'
@@ -402,13 +449,231 @@ function! s:Graph()
 	endif
 endfunction
 
-command! BobInit call s:Init()
+function! s:SearchSource(pattern, bang)
+	if empty(s:project_name)
+		throw 'I do not know where to search. Run :BobProject before doing a search!'
+	endif
+	let l:old_path = getcwd()
+	let l:spec = {'dir': s:bob_base_path}
+	call fzf#vim#grep(
+				\   'rg --column --line-number --no-heading --color=always ' 
+				\  . (len(a:pattern) > 0 ? a:pattern : '""') . ' '
+				\  . join(values(s:project_package_src_dirs_reduced), ' ')
+				\  , 1,
+				\   a:bang ? fzf#vim#with_preview(spec, 'up:60%')
+				\           : fzf#vim#with_preview(spec, 'right:50%:hidden', '?'),
+				\   a:bang)
+endfunction
+
+function! s:Persist()
+	call s:CheckInit()
+	if empty(s:project_name)
+		throw 'I do not know what to persist. Run :BobProject before persisting the current state!'
+	endif
+
+	" TODO check for branches, these are not persistent, only commit-IDs and
+	"      tags are
+	" get the status of all repositories
+	let l:package_list = {}
+	let l:package_name = ''
+	let l:query_command = 'bob status -rv ' . s:project_config . ' '
+				\ . join(s:project_query_options, ' ') . ' ' . s:project_name
+	let l:query_result = systemlist(l:query_command)
+	echo 'Output of ''' . l:query_command . ''':'
+	echo join(l:query_result, "\n")
+	for l:line in l:query_result
+		let l:package_match = matchlist(l:line, '^>> \([^ ]*\)')
+		if len(l:package_match) > 1
+			" found new package to parse
+			let l:package_name = l:package_match[1]
+			let l:package_list[l:package_name] = {}
+		else
+			" if we are currently parsing a package
+			if ! empty(l:package_name)
+				" ignoring 'u' because that is not of interest for persisting
+				" as recipe, that's rather persisting the sources (but not the
+				" currently used one)
+				" also ignoring overrides, not sure if that is correct, though
+				let l:package_status = matchlist(l:line, '^   STATUS \([ACEMNSU\?]*\)')
+				if len(l:package_status) > 1
+					let l:package_list[l:package_name]['status'] = l:package_status[1]
+					if l:package_status[1] =~# '[ACEN\?]'
+						let l:package_list[l:package_name]['error'] = 1
+					else
+						let l:package_list[l:package_name]['error'] = 0
+					endif
+					if l:package_status[1] =~# 'M'
+						let l:package_list[l:package_name]['modified'] = 1
+					else
+						let l:package_list[l:package_name]['modified'] = 0
+					endif
+					if l:package_status[1] =~# 'S'
+						let l:package_list[l:package_name]['switched'] = 1
+					else
+						let l:package_list[l:package_name]['switched'] = 0
+					endif
+					if l:package_status[1] =~# 'U'
+						let l:package_list[l:package_name]['unpushed'] = 1
+					else
+						let l:package_list[l:package_name]['unpushed'] = 0
+					endif
+				endif
+			endif
+		endif
+	endfor
+	" find recipes that specify a branch
+	let l:query_command = 'bob query-scm ' . s:project_config . ' '
+				\ . join(s:project_query_options, ' ')
+				\ . ' -r -f git="git {package} {branch}" '
+				\ . s:project_name
+				"\ . join(keys(s:project_package_src_dirs), ' ')
+	let l:query_result = systemlist(l:query_command)
+	for l:line in l:query_result
+		" first group is the package name, second group ist the configured
+		" branch, if any
+		let l:match = matchlist(l:line, 'git \(\S*\) \(\S*\)')
+		let l:package = l:match[1]
+		if ! empty(l:match[2])
+			let l:branch = l:match[2]
+			if ! has_key(l:package_list, l:package)
+				let l:package_list[l:package] = {}
+			endif
+			let l:package_list[l:package]['branched'] = 1
+			let l:package_list[l:package]['branch'] = {}
+			let l:package_list[l:package]['branch']['name'] = l:branch
+			" get commit ID and tags pointing at the current commit, to
+			" provide them as alternative to the branch
+			let l:result = systemlist('git -C '.s:project_package_src_dirs[l:package].' rev-parse HEAD')
+			let l:package_list[l:package]['branch']['commit'] = l:result[0]
+			let l:result = systemlist('git -C '.s:project_package_src_dirs[l:package].' tag --points-at HEAD')
+			let l:package_list[l:package]['branch']['tag'] = l:result
+		"else
+			"let l:package_list[l:package]['branched'] = 0
+		endif
+	endfor
+
+	" do some statistics
+	let l:error_list = []
+	let l:repo_action_list = []
+	let l:recipe_change_list = []
+	let l:branch_list = []
+	for l:package in items(l:package_list)
+		" count errors
+		if has_key(l:package[1], 'error') && l:package[1]['error']
+			call add(l:error_list, l:package[0])
+		endif
+		" count necessary actions on source repositories
+		if (has_key(l:package[1], 'modified') && l:package[1]['modified'])
+					\ || (has_key(l:package[1], 'unpushed') && l:package[1]['unpushed'])
+			call add(l:repo_action_list, l:package[0])
+		endif
+		" count necessary recipe changes
+		if has_key(l:package[1], 'switched') && l:package[1]['switched']
+			call add(l:recipe_change_list, l:package[0])
+		endif
+		" count recipes that specify branches
+		if has_key(l:package[1], 'branched') && l:package[1]['branched']
+			call add(l:branch_list, l:package[0])
+		endif
+	endfor
+	" print status
+	echo ''
+	echo len(l:error_list) . ' repositories are in erronious state'
+	if len(l:error_list) > 0
+		echo '  ''' . join(l:error_list, ''', ''') . ''''
+		echo 'see result of `bob status` for more information'
+	endif
+	echo len(l:repo_action_list) . ' repositories need action'
+	if len(l:repo_action_list) > 0
+		echo '  ''' . join(l:repo_action_list, ''', ''') . ''''
+		echo '  see info comment at the first line of the recipe, commit changes and push them, delete comment afterwards'
+		echo '  then re-run :BobPersist to check for success'
+	endif
+	echo len(l:recipe_change_list) . ' recipies need changes'
+	if len(l:recipe_change_list) > 0
+		echo '  ''' . join(l:recipe_change_list, ''', ''') . ''''
+		echo '  change recipes according to info comment at the first line and delete the comment afterwards'
+		echo '  then re-run :BobPersist to check for success'
+	endif
+	echo len(l:branch_list) . '  recipes configure branches'
+	if len(l:branch_list) > 0
+		echo '  ''' . join(l:branch_list, ''', ''') . ''''
+		echo '  branches are not persistent'
+		echo '  change recipes according to info comment at the first line and delet the comment afterwards'
+		echo '  then re-run :BobPersist to check for success'
+	endif
+	if len(l:error_list) == 0 && len(l:repo_action_list) == 0 && len(l:recipe_change_list) == 0 && len(l:branch_list) == 0
+		echo 'Recipies are up to date. Nothing to persist.'
+	endif
+
+	" adjust recipies
+	let l:comment_begin = '# vim-bob persist:'
+	for l:package_name in keys(l:package_list)
+		let l:query = 'bob --directory=' . s:bob_base_path
+					\ . ' query-recipe' . s:project_config . ' '
+					\ . join(s:project_query_options) . ' ' . l:package_name
+		let l:query_result = systemlist(l:query)
+		let l:idx = match(l:query_result, 'recipes\/')
+		if l:idx == -1
+			echoerr 'internal error: first line of output of `bob query-recipe`'
+						\ . 'should contain a recipe file, but did not, '
+						\ . 'query was: ' . l:query . ' result was: '
+						\ . join(l:query_result, ' --- ')
+			return
+		endif
+		let l:recipe_file = l:query_result[l:idx]
+		let l:file_content = readfile(l:recipe_file)
+		let l:comment = l:comment_begin . ' ''' . l:package_name . ''':'
+		if has_key(l:package_list[l:package_name], 'modified') && l:package_list[l:package_name]['modified']
+			let l:comment = l:comment . ' Commit your changes!'
+		elseif has_key(l:package_list[l:package_name], 'switched') && l:package_list[l:package_name]['switched']
+			let l:dir = s:project_package_src_dirs[l:package_name]
+			let l:current_commit = trim(system('cd '.l:dir.' && git rev-parse HEAD'))
+			let l:current_tags = trim(system('cd '.l:dir.' && git tag --points-at HEAD'))
+			let l:comment = l:comment . ' Update SCM in recipe to commit ID '''
+						\ . l:current_commit . ''''
+			if !empty(l:current_tags)
+				let l:comment = l:comment . ' or to tag(s) ''refs/tags/'
+							\ . substitute(l:current_tags, ' ', ''' ''refs/tags/', 'g') . ''''
+			endif
+			let l:comment = l:comment . '!'
+		elseif has_key(l:package_list[l:package_name], 'unpushed') && l:package_list[l:package_name]['unpushed']
+			let l:comment = l:comment . ' Push to remote!'
+		elseif has_key(l:package_list[l:package_name], 'branch')
+			let l:comment = l:comment . ' Change from branch to commit '''
+						\ . l:package_list[l:package_name]['branch']['commit'] . ''''
+			if has_key(l:package_list[l:package_name]['branch'], 'tag')
+				if len(l:package_list[l:package_name]['branch']['tag']) == 1
+					let l:comment = l:comment . ' or to tag '''
+								\ . l:package_list[l:package_name]['branch']['tag'] . ''''
+				elseif len(l:package_list[l:package_name]['branch']['tag']) > 1
+					let l:comment = l:comment . ' or to one of the tags: ''refs/tags/'
+								\ . join(l:package_list[l:package_name]['branch']['tag'], ''', ''refs/tags/') . ''''
+				endif
+			endif
+		endif
+		" put persist comment as first line
+		if l:file_content[0] =~# '^' . l:comment_begin
+			" replace an existing persist comment, it makes no sense having
+			" multiple of those in one file
+			let l:file_content[0] = l:comment
+		else
+			" put comment before the current first line
+			call insert(l:file_content, l:comment)
+		endif
+		call writefile(l:file_content, l:recipe_file)
+	endfor
+endfunction
+
+command! -nargs=? -complete=dir BobInit call s:Init("<args>")
 command! BobClean call s:Clean()
 command! BobGraph call s:Graph()
-command! -bang -nargs=? -complete=custom,s:ProjectPackageComplete BobGoto call s:GotoPackageSourceDir("<bang>", <f-args>)
-command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGotoAll call s:GotoPackageSourceDir("<bang>", <f-args>)
+command! -bang -nargs=? -complete=custom,s:ProjectPackageComplete BobGoto call s:GotoPackageSourceDir("<bang>", 0, <f-args>)
+command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGotoAll call s:GotoPackageSourceDir("<bang>", 1, <f-args>)
 command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
 command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:CheckoutPackage(<f-args>)
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
+command! BobPersist call s:Persist()
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobProject call s:Project("<bang>",<f-args>)
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
+command! -bang -nargs=* BobSearchSource call s:SearchSource(<q-args>, <bang>0)

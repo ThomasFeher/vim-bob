@@ -35,9 +35,10 @@ If necessary, this behaviour can be removed manually by deleting |augroup|
 Commands                                         *vim-bob-commands*
 
                                                  *vim-bob:BobInit*
-:BobInit
+:BobInit [dir]
          Must be run before any other vim-bob command can be used. Initializes
-         vim-bob with the current working directory as the base directory.
+         vim-bob with [dir] or the current working directory, respectively, as
+         the base directory.
          The base directory is the directory where the bob commands are
          normally executed on the command line.
 
@@ -102,6 +103,37 @@ Commands                                         *vim-bob-commands*
          Requires that |BobProject| has been called beforehand.
          |g:bob_graph_type| controls the output format.
 
+                                                 *vim-bob:BobPersist*
+:BobPersist
+         Persist the current state into the recipes.
+         This is done by adding comments at the first line of each recipe file
+         that needs to be changed in order to persist the current state of the
+         project.
+         The comments should give useful information on what needs to be
+         changed.
+         The actual changes have to be done manually.
+
+                                                 *vim-bob:BobSearch*
+:BobSearchSource [pattern]
+         Search [pattern] in all source directories that belong to the current
+         project.
+         Needs `fzf` and `ripgrep` to be installed.
+         The results are displayed by `fzf` in a floating window with the file
+         content right of the file name.
+         The preview window is disabled but can be toggled using `?`.
+         This mode is intended for getting an overview of search results.
+
+:BobSearchSource! [pattern]
+         Similar to  |:BobSearchSource| but the floating window uses the
+         complete vim window, the content of the files is displayed above the
+         file names and the preview window is enabled.
+         This mode is to see maximum amount of context of the search results.
+
+                                                 *vim-bob:BobStatus*
+:BobStatus [package]
+         Run `bob status` on [package] or on the current project if no
+         [package] is provided.
+
 ==============================================================================
 
 Configuration                                    *vim-bob-configuration*
@@ -125,6 +157,15 @@ g:bob_reduce_goto_list
 g:bob_graph_type
          Default: "d3"
          Output format of |BobGraph|, must be one of "d3" or "dot".
+g:bob_auto_complete_items
+         List of additional parameters for `BobDev` and `BobProject` used for
+         auto-completion.
+         example: `['-DBUILD_TYPE=Release', '-DBUILD_TYPE=Debug']`
+
+g:bob_verbose
+         Default: 0
+         If set to 1 additional messages are printed. This is mainly for
+         debugging.
 
 ==============================================================================
 
