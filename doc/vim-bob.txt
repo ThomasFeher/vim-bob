@@ -110,6 +110,9 @@ Commands                                         *vim-bob-commands*
          the build system to generate a "compile_commands.json" file in the
          build directory. CMake will do this if called with
          "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".
+         Additionally the Bob command that is executed is appended to
+         `.vim-bob_project.log` which allows to recreate the project in later
+         sessions.
          Additionally autocmds are created that set the working directory of
          the window to the root directory of the source directory
          (the directory `workspace` in `dev/src`) of the current file.

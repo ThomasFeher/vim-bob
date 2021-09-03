@@ -155,7 +155,7 @@ endfunction
 function! s:Project(bang, package, ...)
 	call s:CheckInit()
 	try
-		call s:DevImpl(a:bang, a:package, a:000)
+		let l:project_command = s:DevImpl(a:bang, a:package, a:000)
 	catch
 		echoerr 'Running Bob failed. No new project was created.'
 		return
@@ -289,6 +289,11 @@ function! s:Project(bang, package, ...)
 
 	echo 'generate configuration for YouCompleteMe …'
 	call s:Ycm(a:package)
+
+	" store bob command to file
+	if writefile([l:project_command], s:bob_base_path . '/.vim-bob_project.log', 'a') == -1
+		echom 'error writing to .vim-bob_project.log'
+	endif
 endfunction
 
 function! s:Dev(bang, ...)
@@ -341,6 +346,7 @@ function! s:DevImpl(bang, package, optionals)
 	if v:shell_error
 		throw 'Running Bob failed.'
 	endif
+	return &makeprg
 endfunction
 
 function! s:RemoveWarnings(bob_output)
