@@ -259,18 +259,15 @@ function! s:Project(bang, package, ...)
 	" checked if it is used in multiple targets.
 
 	" persist new state
-	augroup bob
+	augroup vim_bob_readonly_dist
 		autocmd!
 		" make generated files not writeable, in order to prevent editing the
 		" wrong file and losing the changes during Bob's rebuild
 		let l:roPath = s:bob_base_path . '/dev/dist/*,' . s:bob_base_path . '/dev/build/*'
-		let l:errMsg = 'vim-bob: You are trying to edit a generated file.'
-					\ .' If you really want to write to it use `set buftype=`'
-					\ .' and proceed, but rebuilding will probably delete these'
-					\ .' changes!'
-		" using 'acwrite' so we can present a meaningful error message
-		execute 'autocmd BufReadPost ' . l:roPath . ' setlocal buftype=acwrite'
-		execute 'autocmd BufWriteCmd ' . l:roPath . ' echoerr "' . l:errMsg '"'
+		execute 'autocmd BufReadPost ' . l:roPath . ' setlocal readonly'
+	augroup END
+	augroup vim_bob_cd_source
+		autocmd!
 		" set the local working directory to the root source dir of the
 		" respective package
 		execute 'autocmd BufWinEnter ' . s:bob_base_path . '/* lcd ' . s:bob_base_path
