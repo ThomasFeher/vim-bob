@@ -19,7 +19,7 @@ The usual workflow is as follows:
 * Start editing files of that package.
 * Run |:make| to rebuild the project.
 * Alternatively to |:BobGoto| use |:BobOpen| to open a file from a certain
-  package without changing the working directory.
+  package directly.
 
 |:BobProject| automatically prevents writing to files in `dev/build/` and
 `dev/dist`, because these files will be overwritten by Bob during a build and
@@ -51,23 +51,25 @@ Commands                                         *vim-bob-commands*
 
                                                  *vim-bob:BobGoto*
 :BobGoto [package]
-         Changes the current working directory of the buffer to be the source
-         directory of the given [package].
+         Changes the current working directory of the window (using |lcd|) to
+         be the source directory of the given [package].
          Provided for auto-completion:
          * dependencies of current project exclusively
          * non-root recipes
 
 :BobGoto! [package]
-          Like ":BobGoto" but sets the current working directory globally.
+          Like ":BobGoto" but sets the current working directory globally
+          (using |cd|).
 
                                                  *vim-bob:BobGotoAll*
 :BobGotoAll [package]
-         Changes the current working directory of the buffer to be the source
-         directory of the given [package].
+         Changes the current working directory of the window (using |lcd|) to
+         be the source directory of the given [package].
          Provides all available root recipes for auto-completion.
 
 :BobGotoAll! [package]
-          Like ":BobGotoAll" but sets the current working directory globally.
+          Like ":BobGotoAll" but sets the current working directory globally
+          (using |cd|).
 
                                                  *vim-bob:BobOpen*
 :BobOpen [package]
