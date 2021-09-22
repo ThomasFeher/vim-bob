@@ -155,10 +155,31 @@ endfunction
 function! s:Project(bang, package, ...)
 	call s:CheckInit()
 	try
+		let l:original_makeprg = &makeprg
 		let l:project_command = s:DevImpl(a:bang, a:package, a:000)
 	catch
-		echoerr 'Running Bob failed. No new project was created.'
-		return
+		echohl WarningMsg
+		echo 'Running Bob failed. Trying only checkout step …'
+		echohl None
+		try
+			let l:project_makeprg = &makeprg
+			let l:project_command = s:DevImpl(a:bang, a:package, copy(a:000) + ['--checkout-only'])
+			" running :make should still try to build not only checkout
+			let &makeprg = l:project_makeprg
+			echohl WarningMsg
+			echo'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
+			echohl None
+		catch
+			" project failded completely, going back to the original makoprg
+			let &makeprg = l:original_makeprg
+			echoerr 'Running Bob failed even when only using checkout step. No new project was created.'
+			return
+		finally
+			" the result of the last build is not really of interest, what is
+			" interesting is the previous run, because that one failed and
+			" must be fixed in order to get a completely working project
+			colder
+		endtry
 	endtry
 
 	" set already known project properties locally, so they are usable
