@@ -38,11 +38,11 @@ endfunction
 function! s:Init(path)
 	let l:bob_base_path = empty(a:path) ? getcwd() : fnamemodify(a:path, ':p')
 	let l:bob_package_list = system('bob --directory=' . l:bob_base_path . ' ls')
-	let l:bob_package_tree_list = system('bob --directory=' . l:bob_base_path . ' ls -pr')
 	if v:shell_error
-		echoerr "vim-bob not initialized, output from bob ls:\n" . join(l:bob_package_list, "\n")
+		echoerr "vim-bob not initialized, output from bob ls: " . trim(l:bob_package_list)
 		return
 	endif
+	let l:bob_package_tree_list = system('bob --directory=' . l:bob_base_path . ' ls')
 	let l:bob_package_list = s:RemoveInfoMessages(l:bob_package_list)
 	let l:bob_package_tree_list = s:RemoveInfoMessages(l:bob_package_tree_list)
 	let l:bob_config_path = get(g:, 'bob_config_path', '')
