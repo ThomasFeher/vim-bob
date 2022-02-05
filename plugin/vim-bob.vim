@@ -718,8 +718,11 @@ endfunction
 function! s:Open(...)
 	if a:0 == 0
 		let l:dir = s:bob_base_path
-	else
+	elseif exists('s:project_package_src_dirs_reduced')
 		let l:dir = s:bob_base_path . '/' . s:project_package_src_dirs_reduced[a:1]
+	else
+		echoerr 'BobOpen is only available in a project context. Call BobProject first!'
+		return
 	endif
 	" Prefering fzf.vim over telescope.nvim because for fzf we can provide a
 	" path which avoids showing the complete path from the recipe repository
