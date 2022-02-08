@@ -26,6 +26,9 @@ endif
 if !exists('g:bob_verbose')
 	let g:bob_verbose = 0
 endif
+if !exists('g:bob_prefix')
+	let g:bob_prefix = ''
+endif
 
 function! s:RemoveInfoMessages(text)
 	let l:text = a:text
@@ -37,12 +40,15 @@ endfunction
 
 function! s:Init(path)
 	let l:bob_base_path = empty(a:path) ? getcwd() : fnamemodify(a:path, ':p')
-	let l:bob_package_list = system('bob --directory=' . l:bob_base_path . ' ls')
+	" not using `--directory` but `cd` instead, because when running inside of
+	" a container via `g:bob_prefix` we would pass the path on the host to Bob
+	" running in the container, where the path is very likely different
+	let l:bob_package_list = system('cd ' . shellescape(l:bob_base_path) . '; ' . g:bob_prefix . ' bob ls')
 	if v:shell_error
 		echoerr "vim-bob not initialized, output from bob ls: " . trim(l:bob_package_list)
 		return
 	endif
-	let l:bob_package_tree_list = system('bob --directory=' . l:bob_base_path . ' ls')
+	let l:bob_package_tree_list = system('cd ' . shellescape(l:bob_base_path) . '; ' . g:bob_prefix . ' bob ls')
 	let l:bob_package_list = s:RemoveInfoMessages(l:bob_package_list)
 	let l:bob_package_tree_list = s:RemoveInfoMessages(l:bob_package_tree_list)
 	let l:bob_config_path = get(g:, 'bob_config_path', '')
@@ -112,7 +118,10 @@ function! s:GotoPackageSourceDir(bang, doAll, ...)
 			let l:dir = s:project_package_src_dirs_reduced[a:1]
 		else
 			" TODO use correct configuration
-			let l:output = system('cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{src}' " . a:1)
+			" not using g:bob_prefix here, because this would return the path
+			" inside the container which is of no use on the host where we
+			" want to do source navigation
+			let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{src}" ' . a:1)
 			let l:dir = s:RemoveWarnings(l:output)
 			if empty(l:dir)
 				" this check should only be necessary when not in project
@@ -135,13 +144,13 @@ endfunction
 
 function! s:CheckoutPackage(package)
 	call s:CheckInit()
-	echo system('cd ' . shellescape(s:bob_base_path) . '; bob dev --checkout-only ' . a:package)
+	echo system('cd ' . shellescape(s:bob_base_path) . '; ' . g:bob_prefix . ' bob dev --checkout-only ' . a:package)
 endfunction
 
 function! s:GetStatus(...)
 	call s:CheckInit()
 	if a:0 == 1
-		echo system('cd ' . shellescape(s:bob_base_path) . '; bob status --verbose --recursive ' . a:1)
+		echo system('cd ' . shellescape(s:bob_base_path) . '; ' . g:bob_prefix . ' bob status --verbose --recursive ' . a:1)
 		return
 	endif
 
@@ -149,38 +158,66 @@ function! s:GetStatus(...)
 		throw 'I do not know what to check status on. Run :BobProject before querying the status!'
 	endif
 
-	echo system('bob --directory=' . s:bob_base_path . ' status --verbose --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . s:project_name)
+	echo system('cd ' . shellescape(s:bob_base_path) . '; ' . g:bob_prefix . ' bob status --verbose --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . s:project_name)
 endfunction
 
 function! s:Project(bang, package, ...)
 	call s:CheckInit()
-	try
-		let l:original_makeprg = &makeprg
-		let l:project_command = s:DevImpl(a:bang, a:package, a:000)
-	catch
-		echohl WarningMsg
-		echo 'Running Bob failed. Trying only checkout step …'
-		echohl None
+
+	" build the project
+	if empty(g:bob_prefix)
+		" try to build the project completely from the start
 		try
-			let l:project_makeprg = &makeprg
-			let l:project_command = s:DevImpl(a:bang, a:package, copy(a:000) + ['--checkout-only'])
-			" running :make should still try to build not only checkout
-			let &makeprg = l:project_makeprg
+			let l:original_makeprg = &makeprg
+			let l:project_command = s:DevImpl(a:bang, a:package, 0, a:000)
+		catch
 			echohl WarningMsg
-			echo'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
+			echo 'Running Bob failed. Trying only checkout step …'
 			echohl None
+			try
+				let l:project_makeprg = &makeprg
+				let l:project_command = s:DevImpl(a:bang, a:package, 0, copy(a:000) + ['--checkout-only'])
+				" running :make should still try to build not only checkout
+				let &makeprg = l:project_makeprg
+				echohl WarningMsg
+				echo'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
+				echohl None
+			catch
+				" project failded completely, going back to the original makoprg
+				let &makeprg = l:original_makeprg
+				echoerr 'Running Bob failed even when only using checkout step. No new project was created.'
+				return
+			finally
+				" the result of the last build is not really of interest, what is
+				" interesting is the previous run, because that one failed and
+				" must be fixed in order to get a completely working project
+				colder
+			endtry
+		endtry
+	else
+		" first try to checkout the project natively and afterwards build it
+		" inside the container
+		try
+			let l:original_makeprg = &makeprg
+			" do checkout on the host (i.e., use no prefix), as the container
+			" might not be able to do checkouts due to lack of tools installed or
+			" lack of permissions
+			let l:project_command = s:DevImpl(a:bang, a:package, 0, copy(a:000) + ['--checkout-only'])
 		catch
 			" project failded completely, going back to the original makoprg
 			let &makeprg = l:original_makeprg
 			echoerr 'Running Bob failed even when only using checkout step. No new project was created.'
 			return
-		finally
-			" the result of the last build is not really of interest, what is
-			" interesting is the previous run, because that one failed and
-			" must be fixed in order to get a completely working project
-			colder
 		endtry
-	endtry
+		try
+			" do build in the container
+			let l:project_command = s:DevImpl(a:bang, a:package, 1, a:000)
+		catch
+			echohl WarningMsg
+			echo'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
+			echohl None
+		endtry
+	endif
 
 	" set already known project properties locally, so they are usable
 	" subsequently
@@ -196,14 +233,18 @@ function! s:Project(bang, package, ...)
 	endif
 
 	" generate list of packages needed by that root package
-	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package)
+	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; ' . g:bob_prefix . ' bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
 	" add root package to the list
 	let l:list = split(l:list, "\n")
 	call add(l:list, a:package)
 	let l:project_package_src_dirs = {}
 	echo 'gather package paths …'
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . "; bob query-path -f '{name} | {src} | {build}' " . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
+	" not using g:bob_prefix here, because this would return the path inside
+	" the container which is of no use on the host where we want to use code
+	" navigation (which needs the source directories) and language servers
+	" (which need the compilation databases from the build directories)
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{name} | {src} | {build}" ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
 	let l:idx = 0
 	let l:project_package_build_dirs = {}
@@ -329,15 +370,20 @@ function! s:Dev(bang, ...)
 		let l:optionals = copy(a:000)
 		call remove(l:optionals, 0)
 	endif
-	call s:DevImpl(a:bang, l:package, l:optionals)
+	" do build in the container
+	call s:DevImpl(a:bang, l:package, 1, l:optionals)
 endfunction
 
 " we need this extra function to be able to forward optional parameters from
 " other functions as well as commands. Forwarding from functions does work with
 " a list of arguments exclusively, whereas commands provide optional arguments
 " as separate variables (a:0, a:1, etc.).
-function! s:DevImpl(bang, package, optionals)
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob dev ' . a:package
+function! s:DevImpl(bang, package, use_prefix, optionals)
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . ';'
+	if a:use_prefix
+		let l:command = l:command . ' ' . g:bob_prefix
+	endif
+	let l:command = l:command . ' bob dev ' . a:package
 	if len(a:optionals) == 0
 		let &makeprg = l:command
 	else
@@ -386,6 +432,8 @@ endfunction
 function! s:Ycm(package,...)
 	call s:CheckInit()
 	" get build path, which is also the path to the compilation database
+	" not using g:bob_prefix here, because this would return the path inside
+	" the container which is of no use on the host where we want to use YCM
 	let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package)
 	let l:db_path = s:RemoveWarnings(l:output)
 	if empty(l:db_path)
@@ -460,6 +508,9 @@ function! s:Graph()
 	" run `bob graph`
 	let l:graph_type = '-t ' . g:bob_graph_type
 	let l:filename = substitute(s:project_name, '[_:-]', '', 'g')
+	" not using g:bob_prefix here, because this would return the path inside
+	" the container assuming that the host is more likely capable of producing
+	" graphs
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob graph ' . s:project_config . ' ' . join(s:project_query_options) . ' ' . l:graph_type . ' -f ' . l:filename . ' ' . s:project_name
 	" using s:project_query_options because `bob graph` seems to dislike the
 	" same options as the query commands
@@ -510,6 +561,8 @@ function! s:Persist()
 	" get the status of all repositories
 	let l:package_list = {}
 	let l:package_name = ''
+	" not using g:bob_prefix here, because this would return the path inside
+	" the container but we want to modify the source file on the host
 	let l:query_command = 'bob status -rv ' . s:project_config . ' '
 				\ . join(s:project_query_options, ' ') . ' ' . s:project_name
 	let l:query_result = systemlist(l:query_command)
@@ -643,8 +696,8 @@ function! s:Persist()
 	" adjust recipies
 	let l:comment_begin = '# vim-bob persist:'
 	for l:package_name in keys(l:package_list)
-		let l:query = 'bob --directory=' . s:bob_base_path
-					\ . ' query-recipe' . s:project_config . ' '
+		let l:query = 'cd ' . shellescape(s:bob_base_path) . '; '
+					\ . ' bob query-recipe' . s:project_config . ' '
 					\ . join(s:project_query_options) . ' ' . l:package_name
 		let l:query_result = systemlist(l:query)
 		let l:idx = match(l:query_result, 'recipes\/')

@@ -194,6 +194,13 @@ g:bob_verbose
          If set to 1 additional messages are printed. This is mainly for
          debugging.
 
+g:bob_prefix                                     *g:bob_prefix*
+         Default: ''
+         This string will be prepended (separated by a space character) to
+         each invocation of the `bob` command.
+         This allows for example to run Bob inside of a container by setting
+         the string to `docker run --rm -i -v ${PWD}:/build my_container` .
+
 ==============================================================================
 
 Interaction with other plugins                   *vim-bob-interaction*
