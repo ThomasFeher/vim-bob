@@ -484,6 +484,9 @@ function! s:SearchSource(pattern, bang)
 	if empty(s:project_name)
 		throw 'I do not know where to search. Run :BobProject before doing a search!'
 	endif
+	if ! executable('rg')
+		throw '"rg" needs to be installed!'
+	endif
 	let l:old_path = getcwd()
 	let l:spec = {'dir': s:bob_base_path}
 	call fzf#vim#grep(
