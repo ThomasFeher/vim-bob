@@ -481,7 +481,24 @@ function! s:Ycm(package,...)
 	endfor
 	" replace last comma with closing bracket
 	let l:text[-1] = ']'
-	call writefile(l:text, l:fileName)
+	" translate path from inside the container to outside, where the LSP will
+	" be used
+	if ! empty(g:bob_prefix)
+		let l:prefix_path = trim(system(g:bob_prefix . ' pwd'))
+		" ensure that only the begin of a path is replaced
+		" preciding characters are: double quotes, single quotes, equal signs,
+		" include flags (`-i` and `-I`) and spaces that are not escaped with a
+		" backslash
+		let l:path_preceding_chars = '\(["''=]\| -i\| -I\|\(\\\)\@<! \)\zs'
+		let l:pattern = l:path_preceding_chars . l:prefix_path . '/'
+		let l:substitute = s:bob_base_path . '/'
+		let l:text_subst = []
+		for l:line in l:text
+			let l:line_subst = substitute(l:line, l:pattern, l:substitute, 'g')
+			let l:text_subst = add(l:text_subst, l:line_subst)
+		endfor
+	endif
+	call writefile(l:text_subst, l:fileName)
 endfunction
 
 " try to load the given file and return it's content
