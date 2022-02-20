@@ -497,8 +497,9 @@ function! s:Ycm(package,...)
 			let l:line_subst = substitute(l:line, l:pattern, l:substitute, 'g')
 			let l:text_subst = add(l:text_subst, l:line_subst)
 		endfor
+		let l:text = l:text_subst
 	endif
-	call writefile(l:text_subst, l:fileName)
+	call writefile(l:text, l:fileName)
 endfunction
 
 " try to load the given file and return it's content
