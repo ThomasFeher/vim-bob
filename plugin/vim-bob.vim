@@ -43,7 +43,7 @@ function! s:Init(path)
 	" not using `--directory` but `cd` instead, because when running inside of
 	" a container via `g:bob_prefix` we would pass the path on the host to Bob
 	" running in the container, where the path is very likely different
-	let l:bob_package_list = system('cd ' . shellescape(l:bob_base_path) . '; ' . g:bob_prefix . ' bob ls')
+	let l:bob_package_list = system('cd ' . shellescape(l:bob_base_path) . '; bob ls')
 	if v:shell_error
 		echoerr "vim-bob not initialized, output from bob ls: " . trim(l:bob_package_list)
 		return
@@ -211,7 +211,9 @@ function! s:Project(bang, package, ...)
 		endtry
 		try
 			" do build in the container
-			let l:project_command = s:DevImpl(a:bang, a:package, 1, a:000)
+			" avoid checking out, because the container might not be able to
+			" do so
+			let l:project_command = s:DevImpl(a:bang, a:package, 1, a:000 + ['--build-only'])
 		catch
 			echohl WarningMsg
 			echo'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
