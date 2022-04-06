@@ -235,7 +235,7 @@ function! s:Project(bang, package, ...)
 	endif
 
 	" generate list of packages needed by that root package
-	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; ' . g:bob_prefix . ' bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package)
+	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package)
 	let l:list = s:RemoveInfoMessages(l:list)
 	" add root package to the list
 	let l:list = split(l:list, "\n")
