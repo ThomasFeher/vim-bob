@@ -150,7 +150,7 @@ endfunction
 function! s:GetStatus(...)
 	call s:CheckInit()
 	if a:0 == 1
-		echo system('cd ' . shellescape(s:bob_base_path) . '; ' . g:bob_prefix . ' bob status --verbose --recursive ' . a:1)
+		echo system('cd ' . shellescape(s:bob_base_path) . '; ' . ' bob status --verbose --recursive ' . a:1)
 		return
 	endif
 
@@ -158,7 +158,7 @@ function! s:GetStatus(...)
 		throw 'I do not know what to check status on. Run :BobProject before querying the status!'
 	endif
 
-	echo system('cd ' . shellescape(s:bob_base_path) . '; ' . g:bob_prefix . ' bob status --verbose --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . s:project_name)
+	echo system('cd ' . shellescape(s:bob_base_path) . '; ' . ' bob status --verbose --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . s:project_name)
 endfunction
 
 function! s:Project(bang, package, ...)
