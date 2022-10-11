@@ -750,9 +750,9 @@ function! s:Persist()
 			let l:comment = l:comment . ' Change from branch to commit '''
 						\ . l:package_list[l:package_name]['branch']['commit'] . ''''
 			if has_key(l:package_list[l:package_name]['branch'], 'tag')
-				if len(l:package_list[l:package_name]['branch']['tag']) == 1
+				if len(l:package_list[l:package_name]['branch']['tag']) > 0
 					let l:comment = l:comment . ' or to tag '''
-								\ . l:package_list[l:package_name]['branch']['tag'] . ''''
+								\ . join(l:package_list[l:package_name]['branch']['tag'], "' '") . ''''
 				elseif len(l:package_list[l:package_name]['branch']['tag']) > 1
 					let l:comment = l:comment . ' or to one of the tags: ''refs/tags/'
 								\ . join(l:package_list[l:package_name]['branch']['tag'], ''', ''refs/tags/') . ''''
