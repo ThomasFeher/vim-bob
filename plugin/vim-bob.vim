@@ -4,7 +4,10 @@ let s:is_initialized = 0
 " template file
 let s:script_path = expand('<sfile>:h')
 " command line options that are not suitable for calling bob-querry commands
+"   single part command line options
 let s:query_option_filter = ['-b', '--build-only', '-v', '--verbose', '--clean', '--force']
+"   two part command line options (only first part is specified here)
+let s:query_option_filter_2 = ['--destination']
 " the name of the project, effectively the name of the Bob package
 let s:project_name = ''
 " the configuration used for the current project as given to `BobProject`,
@@ -227,7 +230,28 @@ function! s:Project(bang, package, ...)
 	" the first option is always the configuration (without the '-c'), which
 	" is stored separately in s:project_config
 	let l:project_options = copy(a:000[1:-1])
-	let l:project_query_options = filter(copy(l:project_options[0:-1]), 'match(s:query_option_filter, v:val) == -1')
+
+	" remove options that are not accepted by the query command
+	let l:project_query_options = []
+	let l:was_2_arg = 0 " specify whether the previous element was a 2-part argument
+	for l:elem in l:project_options
+		if l:was_2_arg
+			" second part of a two-part argument
+			let l:was_2_arg = 0
+			continue
+		endif
+		if match(s:query_option_filter_2, l:elem)
+			" first part of a two-part argument
+			let l:was_2_arg = 1
+			continue
+		endif
+		if match(s:query_option_filter, l:elem)
+			" single part argument
+			continue
+		endif
+		call add(l:project_query_options, l:elem)
+	endfor
+
 	if a:0 == 0
 		let l:project_config = ''
 	else
