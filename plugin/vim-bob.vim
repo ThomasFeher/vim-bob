@@ -83,6 +83,7 @@ function! s:PackageComplete(ArgLead, CmdLine, CursorPos)
 endfunction
 
 function! s:ProjectPackageComplete(ArgLead, CmdLine, CursorPos)
+	call s:CheckInit()
 	if exists('s:project_package_src_dirs_reduced')
 		return join(sort(keys(s:project_package_src_dirs_reduced)), "\n")
 	else
