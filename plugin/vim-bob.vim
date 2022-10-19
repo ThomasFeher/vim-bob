@@ -561,17 +561,23 @@ function! s:Graph()
 	echo system(l:command)
 
 	" open generated graph
-	let l:open_options = {'detach': 1, 'on_stderr': funcref('s:HandleError')}
+	let l:open_options = {'detach': 1, 'on_stderr': funcref('s:HandleError'), 'on_stdout': funcref('s:HandleError')}
 	if g:bob_graph_type ==? 'dot'
 		" generate graphic from dot file
 		let l:gen_command = 'cd ' . shellescape(s:bob_base_path) . '/graph/' . '; dot -Tpng -o ' . l:filename . '.png ' . l:filename . '.dot'
 		echo system(l:gen_command)
 		" open graphic
 		let l:open_command = ['xdg-open', s:bob_base_path.'/graph/'.l:filename.'.png']
-		call jobstart(l:open_command, l:open_options)
+		let l:err = jobstart(l:open_command, l:open_options)
+		if l:err == 0 || l:err == -1
+			echoerr 'error opening graphics file'
+		endif
 	elseif g:bob_graph_type ==? 'd3'
 		let l:open_command = ['xdg-open', s:bob_base_path.'/graph/'.l:filename.'.html']
-		call jobstart(l:open_command, l:open_options)
+		let l:err = jobstart(l:open_command, l:open_options)
+		if l:err == 0 || l:err == -1
+			echoerr 'error opening html file'
+		endif
 	endif
 endfunction
 
