@@ -46,9 +46,10 @@ function! s:Init(path)
 	" not using `--directory` but `cd` instead, because when running inside of
 	" a container via `g:bob_prefix` we would pass the path on the host to Bob
 	" running in the container, where the path is very likely different
-	let l:bob_package_list = system('cd ' . shellescape(l:bob_base_path) . '; bob ls')
+	let l:command = 'cd ' . shellescape(l:bob_base_path) . '; bob ls'
+	let l:bob_package_list = system(l:command)
 	if v:shell_error
-		echoerr "vim-bob not initialized, output from bob ls: " . trim(l:bob_package_list)
+		echoerr "vim-bob not initialized, error calling '" . l:command . "': " . trim(l:bob_package_list)
 		return
 	endif
 	let l:bob_package_tree_list = system('cd ' . shellescape(l:bob_base_path) . '; ' . g:bob_prefix . ' bob ls')
@@ -110,12 +111,12 @@ endfunction
 function! s:GotoPackageSourceDir(bang, doAll, ...)
 	call s:CheckInit()
 	if a:bang
-		let l:command = 'cd '
+		let l:cd_command = 'cd '
 	else
-		let l:command = 'lcd '
+		let l:cd_command = 'lcd '
 	endif
 	if a:0 == 0
-		execute l:command . s:bob_base_path
+		execute l:cd_command . s:bob_base_path
 	elseif a:0 == 1
 		if ! a:doAll && exists('s:project_package_src_dirs_reduced')
 			" in project mode, we already cached the source directories
@@ -125,7 +126,12 @@ function! s:GotoPackageSourceDir(bang, doAll, ...)
 			" not using g:bob_prefix here, because this would return the path
 			" inside the container which is of no use on the host where we
 			" want to do source navigation
-			let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{src}" ' . a:1)
+			let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{src}" ' . a:1
+			let l:output = system(l:command)
+			if v:shell_error
+				echoerr "error calling '" . l:command . "': " . trim(l:output)
+				return
+			endif
 			let l:dir = s:RemoveWarnings(l:output)
 			if empty(l:dir)
 				" this check should only be necessary when not in project
@@ -140,7 +146,7 @@ function! s:GotoPackageSourceDir(bang, doAll, ...)
 			return
 		endif
 		echom l:dir
-		execute l:command . s:bob_base_path . '/' . l:dir
+		execute l:cd_command . s:bob_base_path . '/' . l:dir
 	else
 		echom 'BobGoto takes at most one parameter'
 	endif
@@ -148,13 +154,25 @@ endfunction
 
 function! s:CheckoutPackage(package)
 	call s:CheckInit()
-	echo system('cd ' . shellescape(s:bob_base_path) . '; bob dev --checkout-only ' . a:package)
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob dev --checkout-only ' . a:package
+	let l:output = system(l:command)
+	if v:shell_error
+		echoerr "error calling '" . l:command . "': " . trim(l:output)
+		return
+	endif
+	echo l:output
 endfunction
 
 function! s:GetStatus(...)
 	call s:CheckInit()
 	if a:0 == 1
-		echo system('cd ' . shellescape(s:bob_base_path) . '; ' . ' bob status --verbose --recursive ' . a:1)
+		let l:command = 'cd ' . shellescape(s:bob_base_path) . '; ' . ' bob status --verbose --recursive ' . a:1
+		let l:output = system(l:command)
+		if v:shell_error
+			echoerr "error calling '" . l:command . "': " . trim(l:output)
+			return
+		endif
+		echo l:output
 		return
 	endif
 
@@ -162,7 +180,13 @@ function! s:GetStatus(...)
 		throw 'I do not know what to check status on. Run :BobProject before querying the status!'
 	endif
 
-	echo system('cd ' . shellescape(s:bob_base_path) . '; ' . ' bob status --verbose --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . s:project_name)
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; ' . ' bob status --verbose --recursive ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . s:project_name
+	let l:output = system(l:command)
+	if v:shell_error
+		echoerr "error calling '" . l:command . "': " . trim(l:output)
+		return
+	endif
+	echo l:output
 endfunction
 
 function! s:Project(bang, package, ...)
@@ -260,7 +284,12 @@ function! s:Project(bang, package, ...)
 	endif
 
 	" generate list of packages needed by that root package
-	let l:list = system('cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package)
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob ls --prefixed --recursive ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . a:package
+	let l:list = system(l:command)
+	if v:shell_error
+		echoerr "error calling '" . l:command . "': " . trim(l:list)
+		return
+	endif
 	let l:list = s:RemoveInfoMessages(l:list)
 	" add root package to the list
 	let l:list = split(l:list, "\n")
@@ -273,6 +302,10 @@ function! s:Project(bang, package, ...)
 	" (which need the compilation databases from the build directories)
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{name} | {src} | {build}" ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
+	if v:shell_error
+		echoerr "error calling '" . l:command . "': " . trim(l:result)
+		return
+	endif
 	let l:idx = 0
 	let l:project_package_build_dirs = {}
 	for l:package in l:list
@@ -461,7 +494,12 @@ function! s:Ycm(package,...)
 	" get build path, which is also the path to the compilation database
 	" not using g:bob_prefix here, because this would return the path inside
 	" the container which is of no use on the host where we want to use YCM
-	let l:output = system('cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package)
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package
+	let l:output = system(l:command)
+	if v:shell_error
+		echoerr "error calling '" . l:command . "': " . trim(l:output)
+		return
+	endif
 	let l:db_path = s:RemoveWarnings(l:output)
 	if empty(l:db_path)
 		echohl WarningMsg | echo a:package ' has not been built yet.' | echohl None
@@ -511,7 +549,12 @@ function! s:Ycm(package,...)
 	" translate path from inside the container to outside, where the LSP will
 	" be used
 	if ! empty(g:bob_prefix)
-		let l:prefix_path = trim(system(g:bob_prefix . ' pwd'))
+		let l:command = g:bob_prefix . ' pwd'
+		let l:prefix_path = trim(system(l:command))
+		if v:shell_error
+			echoerr "error calling '" . l:command . "': " . trim(l:prefix_path)
+			return
+		endif
 		" ensure that only the begin of a path is replaced
 		" preciding characters are: double quotes, single quotes, equal signs,
 		" include flags (`-i` and `-I`) and spaces that are not escaped with a
@@ -559,14 +602,24 @@ function! s:Graph()
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob graph ' . s:project_config . ' ' . join(s:project_query_options) . ' ' . l:graph_type . ' -f ' . l:filename . ' ' . s:project_name
 	" using s:project_query_options because `bob graph` seems to dislike the
 	" same options as the query commands
-	echo system(l:command)
+	let l:output = system(l:command)
+	if v:shell_error
+		echoerr "error calling '" . l:command . "': " . trim(l:output)
+		return
+	endif
+	echo l:output
 
 	" open generated graph
 	let l:open_options = {'detach': 1, 'on_stderr': funcref('s:HandleError'), 'on_stdout': funcref('s:HandleError')}
 	if g:bob_graph_type ==? 'dot'
 		" generate graphic from dot file
 		let l:gen_command = 'cd ' . shellescape(s:bob_base_path) . '/graph/' . '; dot -Tpng -o ' . l:filename . '.png ' . l:filename . '.dot'
-		echo system(l:gen_command)
+		let l:outpu = system(l:gen_command)
+		if v:shell_error
+			echoerr "error calling '" . l:gen_command . "': " . trim(l:output)
+			return
+		endif
+		echo l:output
 		" open graphic
 		let l:open_command = ['xdg-open', s:bob_base_path.'/graph/'.l:filename.'.png']
 		let l:err = jobstart(l:open_command, l:open_options)
@@ -617,6 +670,10 @@ function! s:Persist()
 	let l:query_command = 'bob status -rv ' . s:project_config . ' '
 				\ . join(s:project_query_options, ' ') . ' ' . s:project_name
 	let l:query_result = systemlist(l:query_command)
+	if v:shell_error
+		echoerr "error calling '" . l:query_command . "': " . trim(l:query_result)
+		return
+	endif
 	echo 'Output of ''' . l:query_command . ''':'
 	echo join(l:query_result, "\n")
 	for l:line in l:query_result
@@ -666,6 +723,10 @@ function! s:Persist()
 				\ . s:project_name
 				"\ . join(keys(s:project_package_src_dirs), ' ')
 	let l:query_result = systemlist(l:query_command)
+	if v:shell_error
+		echoerr "error calling '" . l:query_command . "': " . trim(l:query_result)
+		return
+	endif
 	for l:line in l:query_result
 		" first group is the package name, second group ist the configured
 		" branch, if any
@@ -681,9 +742,19 @@ function! s:Persist()
 			let l:package_list[l:package]['branch']['name'] = l:branch
 			" get commit ID and tags pointing at the current commit, to
 			" provide them as alternative to the branch
-			let l:result = systemlist('git -C '.s:project_package_src_dirs[l:package].' rev-parse HEAD')
+			let l:command = 'git -C '.s:project_package_src_dirs[l:package].' rev-parse HEAD'
+			let l:result = systemlist(l:command)
+			if v:shell_error
+				echoerr "error calling '" . l:command . "': " . trim(l:result)
+				return
+			endif
 			let l:package_list[l:package]['branch']['commit'] = l:result[0]
-			let l:result = systemlist('git -C '.s:project_package_src_dirs[l:package].' tag --points-at HEAD')
+			let l:command = 'git -C '.s:project_package_src_dirs[l:package].' tag --points-at HEAD'
+			let l:result = systemlist(l:command)
+			if v:shell_error
+				echoerr "error calling '" . l:command . "': " . trim(l:result)
+				return
+			endif
 			let l:package_list[l:package]['branch']['tag'] = l:result
 		"else
 			"let l:package_list[l:package]['branched'] = 0
@@ -751,6 +822,10 @@ function! s:Persist()
 					\ . ' bob query-recipe' . s:project_config . ' '
 					\ . join(s:project_query_options) . ' ' . l:package_name
 		let l:query_result = systemlist(l:query)
+		if v:shell_error
+			echoerr "error calling '" . l:query . "': " . trim(l:query_result)
+			return
+		endif
 		let l:idx = match(l:query_result, 'recipes\/')
 		if l:idx == -1
 			echoerr 'internal error: first line of output of `bob query-recipe`'
@@ -766,8 +841,18 @@ function! s:Persist()
 			let l:comment = l:comment . ' Commit your changes!'
 		elseif has_key(l:package_list[l:package_name], 'switched') && l:package_list[l:package_name]['switched']
 			let l:dir = s:project_package_src_dirs[l:package_name]
-			let l:current_commit = trim(system('cd '.l:dir.' && git rev-parse HEAD'))
-			let l:current_tags = trim(system('cd '.l:dir.' && git tag --points-at HEAD'))
+			let l:commit_query = 'cd '.l:dir.' && git rev-parse HEAD'
+			let l:current_commit = trim(system(l:commit_query))
+			if v:shell_error
+				echoerr "error calling '" . l:commit_query . "': " . trim(l:current_commit)
+				return
+			endif
+			let l:tag_query = 'cd '.l:dir.' && git tag --points-at HEAD'
+			let l:current_tags = trim(system(l:tag_query))
+			if v:shell_error
+				echoerr "error calling '" . l:tag_query . "': " . trim(l:current_tags)
+				return
+			endif
 			let l:comment = l:comment . ' Update SCM in recipe to commit ID '''
 						\ . l:current_commit . ''''
 			if !empty(l:current_tags)
