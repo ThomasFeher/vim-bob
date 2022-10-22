@@ -148,7 +148,7 @@ endfunction
 
 function! s:CheckoutPackage(package)
 	call s:CheckInit()
-	echo system('cd ' . shellescape(s:bob_base_path) . '; ' . g:bob_prefix . ' bob dev --checkout-only ' . a:package)
+	echo system('cd ' . shellescape(s:bob_base_path) . '; bob dev --checkout-only ' . a:package)
 endfunction
 
 function! s:GetStatus(...)
