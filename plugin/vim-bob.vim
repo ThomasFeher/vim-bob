@@ -41,6 +41,12 @@ function! s:RemoveInfoMessages(text)
 	return l:text
 endfunction
 
+" makeprg has some special rules, we'll apply them all here
+function! s:EscapeForMakeprg(text)
+	" pipe symbol must be escaped
+	return substitute(a:text, '|', '\\|', 'g')
+endfunction
+
 function! s:Init(path)
 	let l:bob_base_path = empty(a:path) ? getcwd() : fnamemodify(a:path, ':p')
 	" not using `--directory` but `cd` instead, because when running inside of
@@ -441,7 +447,7 @@ endfunction
 function! s:DevImpl(bang, package, use_prefix, optionals)
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . ';'
 	if a:use_prefix
-		let l:command = l:command . ' ' . g:bob_prefix
+		let l:command = l:command . ' ' . s:EscapeForMakeprg(g:bob_prefix)
 	endif
 	let l:command = l:command . ' bob dev ' . a:package
 	if len(a:optionals) == 0
