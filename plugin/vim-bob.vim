@@ -64,6 +64,13 @@ function! s:CheckInit()
 	endif
 endfunction
 
+function! s:IsProject()
+	if empty(s:project_name)
+		return 0;
+	endif
+	return 1;
+endfunction
+
 function! s:Clean()
 	call s:CheckInit()
 	execute '!rm -r ' . s:bob_base_path . '/dev/build ' . s:bob_base_path . '/dev/dist'
@@ -416,7 +423,8 @@ endfunction
 function! s:HandleError(job_id, data, event)
 	echom join(a:data)
 endfunction
-function! s:Graph()
+
+function! s:Graph(...)
 	call s:CheckInit()
 	if empty(s:project_name)
 		throw 'I do not know what to draw. Run :BobProject before drawing a dependency graph!'
@@ -425,25 +433,31 @@ function! s:Graph()
 		" using the same default as Bob currently uses (as of v0.16)
 		let g:bob_graph_type = 'd3'
 	endif
+	if s:IsProject()
+		call s:GraphImpl(s:project_config, g:bob_graph_type, s:project_name, s:project_query_options)
+	elseif
+		call s:GraphImpl()
+endfunction
 
+function! s:GraphImpl(config, graph_type, package_name, package_query_options)
 	" run `bob graph`
-	let l:graph_type = '-t ' . g:bob_graph_type
-	let l:filename = substitute(s:project_name, '[_:-]', '', 'g')
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob graph ' . s:project_config . ' ' . join(s:project_query_options) . ' ' . l:graph_type . ' -f ' . l:filename . ' ' . s:project_name
+	let l:graph_type = '-t ' . a:graph_type
+	let l:filename = substitute(a:package_name, '[_:-]', '', 'g')
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob graph ' . a:config . ' ' . join(a:package_query_options) . ' ' . l:graph_type . ' -f ' . l:filename . ' ' . a:package_name
 	" using s:project_query_options because `bob graph` seems to dislike the
 	" same options as the query commands
 	echo system(l:command)
 
 	" open generated graph
 	let l:open_options = {'detach': 1, 'on_stderr': funcref('s:HandleError')}
-	if g:bob_graph_type ==? 'dot'
+	if a:graph_type ==? 'dot'
 		" generate graphic from dot file
 		let l:gen_command = 'cd ' . shellescape(s:bob_base_path) . '/graph/' . '; dot -Tpng -o ' . l:filename . '.png ' . l:filename . '.dot'
 		echo system(l:gen_command)
 		" open graphic
 		let l:open_command = ['xdg-open', s:bob_base_path.'/graph/'.l:filename.'.png']
 		call jobstart(l:open_command, l:open_options)
-	elseif g:bob_graph_type ==? 'd3'
+	elseif a:graph_type ==? 'd3'
 		let l:open_command = ['xdg-open', s:bob_base_path.'/graph/'.l:filename.'.html']
 		call jobstart(l:open_command, l:open_options)
 	endif
@@ -667,7 +681,7 @@ endfunction
 
 command! -nargs=? -complete=dir BobInit call s:Init("<args>")
 command! BobClean call s:Clean()
-command! BobGraph call s:Graph()
+command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobGraph call s:Graph(<f-args>)
 command! -bang -nargs=? -complete=custom,s:ProjectPackageComplete BobGoto call s:GotoPackageSourceDir("<bang>", 0, <f-args>)
 command! -bang -nargs=? -complete=custom,s:PackageTreeComplete BobGotoAll call s:GotoPackageSourceDir("<bang>", 1, <f-args>)
 command! -nargs=? -complete=custom,s:PackageTreeComplete BobStatus call s:GetStatus(<f-args>)
