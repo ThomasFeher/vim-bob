@@ -653,7 +653,7 @@ function! s:SearchSource(pattern, bang)
 	call fzf#vim#grep(
 				\   'rg --column --line-number --no-heading --color=always ' 
 				\  . (len(a:pattern) > 0 ? a:pattern : '""') . ' '
-				\  . join(values(s:project_package_src_dirs_reduced), ' ')
+				\  . join(uniq(values(s:project_package_src_dirs_reduced)), ' ')
 				\  , 1,
 				\   a:bang ? fzf#vim#with_preview(spec, 'up:60%')
 				\           : fzf#vim#with_preview(spec, 'right:50%:hidden', '?'),
