@@ -542,7 +542,7 @@ function! s:Ycm(package,...)
 	" replace closing bracket at last line with comma for possible
 	" continuation of the list
 	let l:text[-1] = ','
-	for l:build_dir in values(s:project_package_build_dirs)
+	for l:build_dir in uniq(values(s:project_package_build_dirs))
 		let l:file = fnameescape(l:build_dir . '/compile_commands.json')
 		if filereadable(l:file)
 			let l:textToAdd = readfile(l:file)
