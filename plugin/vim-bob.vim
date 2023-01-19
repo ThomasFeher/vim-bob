@@ -936,6 +936,32 @@ function! s:Open(...)
 	message('No file selection backend found. Install fzf.vim or telescope.nvim to use :BobOpen')
 endfunction
 
+function! s:Inspect()
+	call s:CheckInit()
+	if !empty(s:project_name)
+		echo 's:project_name: ' . s:project_name
+		echo 's:project_config: ' . s:project_config
+		echo 's:project_options: ' . join(s:project_options, ', ')
+		echo 's:project_query_options: ' . join(s:project_query_options, ', ')
+		echo 's:project_package_build_dirs: '
+		for [key, value] in items(s:project_package_build_dirs)
+			echo '    ' . key . ': ' . value
+		endfor
+		echo 's:project_package_src_dirs: '
+		for [key, value] in items(s:project_package_src_dirs)
+			echo '    ' . key . ': ' . value
+		endfor
+		echo 's:project_package_src_dirs_reduced: '
+		for [key, value] in items(s:project_package_src_dirs_reduced)
+			echo '    ' . key . ': ' . value
+		endfor
+	endif
+	echo 'g:bob_reduce_goto_list: ' . g:bob_reduce_goto_list
+	echo 'g:bob_auto_complete_items: ' . join(g:bob_auto_complete_items, ', ')
+	echo 'g:bob_verbose: ' . g:bob_verbose
+	echo 'g:bob_prefix: ' . g:bob_prefix
+endfunction
+
 command! -nargs=? -complete=dir BobInit call s:Init("<args>")
 command! BobClean call s:Clean()
 command! BobGraph call s:Graph()
@@ -949,3 +975,4 @@ command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobProject c
 command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
 command! -bang -nargs=* BobSearchSource call s:SearchSource(<q-args>, <bang>0)
 command! -nargs=? -complete=custom,s:ProjectPackageComplete BobOpen call s:Open(<f-args>)
+command! BobInspect call s:Inspect()
