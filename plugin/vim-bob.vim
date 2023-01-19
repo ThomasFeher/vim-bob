@@ -199,6 +199,8 @@ function! s:Project(bang, package, ...)
 	call s:CheckInit()
 
 	" build the project
+	" TODO move prefix-logic to s:DevImpl, because we need the same logic for
+	" BobDev as well (it's currently broken when used with non-empty g:bob_prefix)
 	if empty(g:bob_prefix)
 		" try to build the project completely from the start
 		try
