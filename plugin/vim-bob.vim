@@ -252,7 +252,7 @@ function! s:Project(bang, package, ...)
 			let l:project_command = s:DevImpl(a:bang, a:package, 1, a:000 + ['--build-only'])
 		catch
 			echohl WarningMsg
-			echo'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
+			echo 'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
 			echohl None
 		endtry
 	endif
