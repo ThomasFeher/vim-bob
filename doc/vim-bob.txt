@@ -161,6 +161,10 @@ Commands                                         *vim-bob-commands*
          Run `bob status` on [package] or on the current project if no
          [package] is provided.
 
+                                                 *vim-bob:BobInspect*
+:BobInspect
+         Print internal state of the vim-bob plugin. Used mainly for debugging.
+
 ==============================================================================
 
 Configuration                                    *vim-bob-configuration*
