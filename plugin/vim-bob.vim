@@ -198,6 +198,13 @@ endfunction
 function! s:Project(bang, package, ...)
 	call s:CheckInit()
 
+	let l:args = {}
+	if a:0 > 0
+		let l:args.config = a:1
+		if a:0 > 1
+			let l:args.args = a:000[1:-1]
+		endif
+	endif
 	" build the project
 	" TODO move prefix-logic to s:DevImpl, because we need the same logic for
 	" BobDev as well (it's currently broken when used with non-empty g:bob_prefix)
@@ -205,14 +212,22 @@ function! s:Project(bang, package, ...)
 		" try to build the project completely from the start
 		try
 			let l:original_makeprg = &makeprg
-			let l:project_command = s:DevImpl(a:bang, a:package, 0, a:000)
+			let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 0}, l:args))
 		catch
 			echohl WarningMsg
 			echo 'Running Bob failed. Trying only checkout step …'
 			echohl None
 			try
 				let l:project_makeprg = &makeprg
-				let l:project_command = s:DevImpl(a:bang, a:package, 0, copy(a:000) + ['--checkout-only'])
+				let l:args_co = deepcopy(l:args)
+				" TODO: check if '--checkout-only' is already there
+				" TODO: check if '--build-only' is already there
+				if has_key(l:args_co, 'args')
+					let l:args_co.args = l:args_co.args + '--checkout-only'
+				else
+					let l:args_co.args = ['--checkout-only']
+				endif
+				let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 0}, l:args_co))
 				" running :make should still try to build not only checkout
 				let &makeprg = l:project_makeprg
 				echohl WarningMsg
@@ -238,7 +253,15 @@ function! s:Project(bang, package, ...)
 			" do checkout on the host (i.e., use no prefix), as the container
 			" might not be able to do checkouts due to lack of tools installed or
 			" lack of permissions
-			let l:project_command = s:DevImpl(a:bang, a:package, 0, copy(a:000) + ['--checkout-only'])
+			let l:args_co = deepcopy(l:args)
+			" TODO: check if '--checkout-only' is already there
+			" TODO: check if '--build-only' is already there
+			if has_key(l:args_co, 'args')
+				let l:args_co.args = l:args_co.args + '--checkout-only'
+			else
+				let l:args_co.args = ['--checkout-only']
+			endif
+			let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 0}, l:args_co))
 		catch
 			" project failded completely, going back to the original makoprg
 			let &makeprg = l:original_makeprg
@@ -249,7 +272,15 @@ function! s:Project(bang, package, ...)
 			" do build in the container
 			" avoid checking out, because the container might not be able to
 			" do so
-			let l:project_command = s:DevImpl(a:bang, a:package, 1, a:000 + ['--build-only'])
+			let l:args_bo = deepcopy(l:args)
+			" TODO: check if '--checkout-only' is already there
+			" TODO: check if '--build-only' is already there
+			if has_key(l:args_bo, 'args')
+				let l:args_bo.args = l:args_bo.args + '--build-only'
+			else
+				let l:args_bo.args = ['--build-only']
+			endif
+			let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 1}, l:args_bo))
 		catch
 			echohl WarningMsg
 			echo 'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
@@ -446,23 +477,20 @@ endfunction
 " other functions as well as commands. Forwarding from functions does work with
 " a list of arguments exclusively, whereas commands provide optional arguments
 " as separate variables (a:0, a:1, etc.).
-function! s:DevImpl(bang, package, use_prefix, optionals)
+function! s:DevImpl(bang, package, args)
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . ';'
-	if a:use_prefix
+	if a:args.use_prefix
 		let l:command = l:command . ' ' . s:EscapeForMakeprg(g:bob_prefix)
 	endif
 	let l:command = l:command . ' bob dev ' . a:package
-	if len(a:optionals) == 0
-		let &makeprg = l:command
-	else
-		let l:config = ' -c ' . s:bob_config_path . '/' . a:optionals[0]
-		let &makeprg = l:command . l:config
+	if has_key(a:args, 'config')
+		let l:config = ' -c ' . s:bob_config_path . '/' . a:args.config
+		let l:command = l:command . l:config
 	endif
-
-	if len(a:optionals) > 1
-		let l:args = join(a:optionals[1:-1])
-		let &makeprg = l:command . l:config . ' ' . l:args
+	if has_key(a:args, 'args')
+		let l:command = l:command . join(a:args.args)
 	endif
+	let &makeprg = l:command
 
 	try
 		" we need to get the error code from the actual make command instead
