@@ -200,100 +200,30 @@ function! s:Project(bang, package, ...)
 
 	let l:args = {}
 	if a:0 > 0
+		" the first option is always the configuration (without the '-c')
 		let l:args.config = a:1
 		if a:0 > 1
 			let l:args.args = a:000[1:-1]
 		endif
 	endif
 	" build the project
-	" TODO move prefix-logic to s:DevImpl, because we need the same logic for
-	" BobDev as well (it's currently broken when used with non-empty g:bob_prefix)
-	if empty(g:bob_prefix)
-		" try to build the project completely from the start
-		try
-			let l:original_makeprg = &makeprg
-			let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 0}, l:args))
-		catch
-			echohl WarningMsg
-			echo 'Running Bob failed. Trying only checkout step …'
-			echohl None
-			try
-				let l:project_makeprg = &makeprg
-				let l:args_co = deepcopy(l:args)
-				" TODO: check if '--checkout-only' is already there
-				" TODO: check if '--build-only' is already there
-				if has_key(l:args_co, 'args')
-					let l:args_co.args = l:args_co.args + '--checkout-only'
-				else
-					let l:args_co.args = ['--checkout-only']
-				endif
-				let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 0}, l:args_co))
-				" running :make should still try to build not only checkout
-				let &makeprg = l:project_makeprg
-				echohl WarningMsg
-				echo'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
-				echohl None
-			catch
-				" project failded completely, going back to the original makoprg
-				let &makeprg = l:original_makeprg
-				echoerr 'Running Bob failed even when only using checkout step. No new project was created.'
-				return
-			finally
-				" the result of the last build is not really of interest, what is
-				" interesting is the previous run, because that one failed and
-				" must be fixed in order to get a completely working project
-				colder
-			endtry
-		endtry
-	else
-		" first try to checkout the project natively and afterwards build it
-		" inside the container
-		try
-			let l:original_makeprg = &makeprg
-			" do checkout on the host (i.e., use no prefix), as the container
-			" might not be able to do checkouts due to lack of tools installed or
-			" lack of permissions
-			let l:args_co = deepcopy(l:args)
-			" TODO: check if '--checkout-only' is already there
-			" TODO: check if '--build-only' is already there
-			if has_key(l:args_co, 'args')
-				let l:args_co.args = l:args_co.args + '--checkout-only'
-			else
-				let l:args_co.args = ['--checkout-only']
-			endif
-			let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 0}, l:args_co))
-		catch
-			" project failded completely, going back to the original makoprg
-			let &makeprg = l:original_makeprg
-			echoerr 'Running Bob failed even when only using checkout step. No new project was created.'
-			return
-		endtry
-		try
-			" do build in the container
-			" avoid checking out, because the container might not be able to
-			" do so
-			let l:args_bo = deepcopy(l:args)
-			" TODO: check if '--checkout-only' is already there
-			" TODO: check if '--build-only' is already there
-			if has_key(l:args_bo, 'args')
-				let l:args_bo.args = l:args_bo.args + '--build-only'
-			else
-				let l:args_bo.args = ['--build-only']
-			endif
-			let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 1}, l:args_bo))
-		catch
-			echohl WarningMsg
-			echo 'Running Bob failed after the checkout step. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
-			echohl None
-		endtry
-	endif
+	try
+		let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 1}, l:args))
+	catch
+		echohl WarningMsg
+		echo'Running Bob failed. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
+		echohl None
+		return
+	endtry
 
 	" set already known project properties locally, so they are usable
 	" subsequently
 	let l:project_name = a:package
-	" the first option is always the configuration (without the '-c'), which
-	" is stored separately in s:project_config
-	let l:project_options = copy(a:000[1:-1])
+	if has_key(l:args, 'args')
+		let l:project_options = l:args.args
+	else
+		let l:project_options = ''
+	endif
 
 	" remove options that are not accepted by the query command
 	let l:project_query_options = []
@@ -316,10 +246,10 @@ function! s:Project(bang, package, ...)
 		call add(l:project_query_options, l:elem)
 	endfor
 
-	if a:0 == 0
-		let l:project_config = ''
+	if has_key(l:args, 'config')
+		let l:project_config = ' -c ' . s:bob_config_path . '/' . l:args.config
 	else
-		let l:project_config = ' -c ' . s:bob_config_path . '/' . a:1
+		let l:project_config = ''
 	endif
 
 	" generate list of packages needed by that root package
@@ -464,9 +394,6 @@ function! s:Dev(bang, ...)
 				let l:args.config = s:project_config
 			endif
 			let l:args.args = s:project_options
-			if ! empty(g:bob_prefix) " avoid checkout inside the container
-				call extend(l:args.args, ['--build-only'])
-			endif
 		else
 			echom 'error: provide a package name or run :BobProject first'
 			return
