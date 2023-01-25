@@ -488,7 +488,7 @@ function! s:DevImpl(bang, package, args)
 		let l:command = l:command . l:config
 	endif
 	if has_key(a:args, 'args')
-		let l:command = l:command . join(a:args.args)
+		let l:command = l:command . ' ' . join(a:args.args)
 	endif
 	let &makeprg = l:command
 
