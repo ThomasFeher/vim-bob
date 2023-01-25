@@ -400,9 +400,11 @@ function! s:Dev(bang, ...)
 		endif
 	else
 		let l:package = a:1
-		let l:args.config = a:2
-		if a:0 > 2
-			let l:args.args = copy(a:000[2:-1])
+		if a:0 > 1
+			let l:args.config = a:2
+			if a:0 > 2
+				let l:args.args = copy(a:000[2:-1])
+			endif
 		endif
 	endif
 	" do build in the container
