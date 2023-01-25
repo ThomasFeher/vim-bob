@@ -456,21 +456,30 @@ endfunction
 
 function! s:Dev(bang, ...)
 	call s:CheckInit()
-	if (a:0 == 0)
+	let l:args = {}
+	if (a:0 == 0) " no package given
 		if !empty(s:project_name)
 			let l:package = s:project_name
-			let l:optionals = s:project_options
+			if ! empty(s:project_config)
+				let l:args.config = s:project_config
+			endif
+			let l:args.args = s:project_options
+			if ! empty(g:bob_prefix) " avoid checkout inside the container
+				call extend(l:args.args, ['--build-only'])
+			endif
 		else
 			echom 'error: provide a package name or run :BobProject first'
 			return
 		endif
 	else
 		let l:package = a:1
-		let l:optionals = copy(a:000)
-		call remove(l:optionals, 0)
+		let l:args.config = a:2
+		if a:0 > 2
+			let l:args.args = copy(a:000[2:-1])
+		endif
 	endif
 	" do build in the container
-	call s:DevImpl(a:bang, l:package, 1, l:optionals)
+	call s:DevImpl(a:bang, l:package, extend({'use_prefix': 1}, l:args))
 endfunction
 
 " we need this extra function to be able to forward optional parameters from
