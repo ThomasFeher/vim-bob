@@ -1,0 +1,16 @@
+root: true
+depends:
+  - lib_a
+checkoutScript: |
+  touch app_b.source
+buildScript: |
+  cat >compile_commands.json <<-END
+  [
+  {
+    "app_b": "entry 1"
+  },
+  {
+    "app_b": "entry 2"
+  }
+  ]
+  END

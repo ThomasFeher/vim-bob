@@ -490,24 +490,12 @@ function! s:Ycm(package,...)
 	let l:text = readfile(s:script_path . '/ycm_extra_conf.py.template')
 	call map(l:text, 'substitute(v:val, "@db_path@", s:bob_base_path."/dev", "g")')
 	call writefile(l:text, s:bob_base_path . '/dev/.ycm_extra_conf.py')
-	if filereadable(l:db_path_abs.'/compile_commands.json')
-		"copy the compilation database for chromatica and clangd-based
-		"YouCompleteMe
-		let fl = readfile(l:db_path_abs.'/compile_commands.json', 'b')
-		call writefile(fl, s:bob_base_path.'/dev/compile_commands.json', 'b')
-	else
-		echom 'No compile_commands.json file found in root package!'
-		" create an empty file because the subsequent part of this function
-		" relies on an existing database
-		call writefile(['[', ']'], s:bob_base_path.'/dev/compile_commands.json')
-	endif
+	" initialize empty compilation database
+	call writefile(['['], s:bob_base_path.'/dev/compile_commands.json')
 	" add contents of all depending packages to the root package compilation
 	" database
 	let l:fileName = fnameescape(s:bob_base_path . '/dev/compile_commands.json')
 	let l:text = readfile(l:fileName)
-	" replace closing bracket at last line with comma for possible
-	" continuation of the list
-	let l:text[-1] = ','
 	for l:build_dir in uniq(values(s:project_package_build_dirs))
 		let l:file = fnameescape(l:build_dir . '/compile_commands.json')
 		if filereadable(l:file)

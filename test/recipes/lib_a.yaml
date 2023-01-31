@@ -1,0 +1,13 @@
+checkoutScript: |
+  touch lib_a.source
+buildScript: |
+  cat >compile_commands.json <<-END
+  [
+  {
+    "lib_a": "entry 1"
+  },
+  {
+    "lib_a": "entry 2"
+  }
+  ]
+  END
