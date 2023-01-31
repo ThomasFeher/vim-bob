@@ -497,8 +497,14 @@ function! s:Ycm(package,...)
 	let l:fileName = fnameescape(s:bob_base_path . '/dev/compile_commands.json')
 	let l:text = readfile(l:fileName)
 	for l:build_dir in uniq(values(s:project_package_build_dirs))
+		if g:bob_verbose
+			echo "checking for compile_commands.json in " . l:build_dir
+		endif
 		let l:file = fnameescape(l:build_dir . '/compile_commands.json')
 		if filereadable(l:file)
+			if g:bob_verbose
+				echo "found"
+			endif
 			let l:textToAdd = readfile(l:file)
 			" append without the surrounding brackets (first and last line)
 			call extend(l:text, l:textToAdd[1:-2])
