@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+if [[ ! -d plenary.nvim ]]
+then
+	git clone https://github.com/nvim-lua/plenary.nvim
+fi
+# get the absolute path of the test directory, otherwise busted will run tests
+# from all directories with that name, which happens to be plenary's test
+# dirPathAbs="$(dirname -- "$( readlink -f -- "$0")")"
+# nvim -V1 --headless --clean -u test/minimal_init.vim -c "PlenaryBustedDirectory "$dirPathAbs""
+nvim --headless --clean -u minimal_init.vim -c "PlenaryBustedDirectory tests {minimal_init = 'minimal_init.vim'}"
+# nvim -V1 --headless --clean -u test/minimal_init.vim -c "echo &rtp"

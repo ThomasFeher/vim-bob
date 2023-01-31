@@ -1,1 +1,5 @@
 doc/tags
+/test/.bob*
+/test/dev/
+/test/plenary.nvim/
+/test/.vim-bob_project.log
