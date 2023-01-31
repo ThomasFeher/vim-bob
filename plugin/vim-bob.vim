@@ -271,6 +271,9 @@ function! s:Project(bang, package, ...)
 	" (which need the compilation databases from the build directories)
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{name} | {src} | {build}" ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
+	" TODO the query fails if any of the queried paths does not exist, but it
+	" does not return an error, instead it prints an error message on stdout,
+	" which seems a bug to me
 	if v:shell_error
 		echoerr "error calling '" . l:command . "': " . trim(l:result)
 		return
@@ -475,8 +478,18 @@ function! s:Ycm(package,...)
 		return
 	endif
 	let l:db_path = s:RemoveWarnings(l:output)
+	" Bob's query-path is not always returning an error when the path does not
+	" exist, so we need to check the content
 	if empty(l:db_path)
 		echohl WarningMsg | echo a:package ' has not been built yet.' | echohl None
+		return
+	endif
+	if ! isdirectory(l:db_path)
+		" this can happen if the recipe has no build step
+		" in that case we get a message
+		" 'Directory for {build} step of package app_a not present.'
+		" so it should suffice to just print the output as error message
+		echohl WarningMsg | echo l:db_path | echohl None
 		return
 	endif
 	" make the path absolute
