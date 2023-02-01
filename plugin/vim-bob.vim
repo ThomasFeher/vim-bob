@@ -379,7 +379,7 @@ function! s:Project(bang, package, ...)
 	let s:project_package_src_dirs_reduced = l:project_package_src_dirs_reduced
 
 	echo 'generate configuration for YouCompleteMe …'
-	call s:Ycm(a:package)
+	call s:CompilationDatabase()
 
 	" store bob command to file
 	if writefile([l:project_command], s:bob_base_path . '/.vim-bob_project.log', 'a') == -1
@@ -466,11 +466,12 @@ function! s:RemoveWarnings(bob_output)
 	"return nothing, because the output contained only warnings
 endfunction
 
-function! s:Ycm(package,...)
+function! s:Ycm(package, ...)
 	call s:CheckInit()
 	" get build path, which is also the path to the compilation database
 	" not using g:bob_prefix here, because this would return the path inside
-	" the container which is of no use on the host where we want to use YCM
+	" the container which is of no use on the host where we want to use the
+	" compilation database
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f ''{build}'' ' . s:project_config . ' ' . join(s:project_query_options, ' ') . ' ' . a:package
 	let l:output = system(l:command)
 	if v:shell_error
@@ -498,6 +499,21 @@ function! s:Ycm(package,...)
 	let l:db_path_subst = substitute(l:db_path_abs, '/', '\\/', 'g')
 	" remove newlines (output of bob query-path contains a trailing newline)
 	let l:db_path_subst = substitute(l:db_path_subst, '\n', '', 'g')
+	" copy the template into the dev directory and insert the correct path to
+	" the compilation database file
+	let l:text = readfile(s:script_path . '/ycm_extra_conf.py.template')
+	call map(l:text, 'substitute(v:val, "@db_path@", s:bob_base_path."/dev", "g")')
+	call writefile(l:text, s:bob_base_path . '/dev/.ycm_extra_conf.py')
+	if filereadable(l:db_path_abs.'/compile_commands.json')
+		let fl = readfile(l:db_path_abs.'/compile_commands.json', 'b')
+		call writefile(fl, s:bob_base_path.'/dev/compile_commands.json', 'b')
+	else
+		echom 'No compile_commands.json file found in root package!'
+	endif
+endfunction
+
+function! s:CompilationDatabase()
+	call s:CheckInit()
 	" copy the template into the dev directory and insert the correct path to
 	" the compilation database file
 	let l:text = readfile(s:script_path . '/ycm_extra_conf.py.template')
@@ -945,7 +961,7 @@ command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:Chec
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
 command! BobPersist call s:Persist()
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobProject call s:Project("<bang>",<f-args>)
-command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
+command! -nargs=+ -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
 command! -bang -nargs=* BobSearchSource call s:SearchSource(<q-args>, <bang>0)
 command! -nargs=? -complete=custom,s:ProjectPackageComplete BobOpen call s:Open(<f-args>)
 command! BobInspect call s:Inspect()
