@@ -40,17 +40,17 @@ describe("BobProject", function()
 		local reference = [=[
 [
 {
-  "lib_a": "entry 1"
-},
-{
-  "lib_a": "entry 2"
-}
-,
-{
   "app_b": "entry 1"
 },
 {
   "app_b": "entry 2"
+}
+,
+{
+  "lib_a": "entry 1"
+},
+{
+  "lib_a": "entry 2"
 }
 ]]=]
 		assert(result == reference, "result:\n" .. result .. "\nreference:\n" .. reference)

@@ -525,7 +525,7 @@ function! s:CompilationDatabase()
 	" database
 	let l:fileName = fnameescape(s:bob_base_path . '/dev/compile_commands.json')
 	let l:text = readfile(l:fileName)
-	for l:build_dir in uniq(values(s:project_package_build_dirs))
+	for l:build_dir in uniq(sort(values(s:project_package_build_dirs)))
 		if g:bob_verbose
 			echo "checking for compile_commands.json in " . l:build_dir
 		endif
