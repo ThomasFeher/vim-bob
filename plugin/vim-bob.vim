@@ -216,11 +216,35 @@ function! s:Project(bang, package, ...)
 		return
 	endtry
 
+	call s:ProjectImpl(a:package, l:args)
+
+	" store bob command to file
+	if writefile([l:project_command], s:bob_base_path . '/.vim-bob_project.log', 'a') == -1
+		echom 'error writing to .vim-bob_project.log'
+	endif
+endfunction
+
+function! s:ProjectNoBuild(package, ...)
+	call s:CheckInit()
+
+	let l:args = {}
+	if a:0 > 0
+		" the first option is always the configuration (without the '-c')
+		let l:args.config = a:1
+		if a:0 > 1
+			let l:args.args = a:000[1:-1]
+		endif
+	endif
+
+	call s:ProjectImpl(a:package, l:args)
+endfunction
+
+function! s:ProjectImpl(package, args)
 	" set already known project properties locally, so they are usable
 	" subsequently
 	let l:project_name = a:package
-	if has_key(l:args, 'args')
-		let l:project_options = l:args.args
+	if has_key(a:args, 'args')
+		let l:project_options = a:args.args
 	else
 		let l:project_options = ''
 	endif
@@ -246,8 +270,8 @@ function! s:Project(bang, package, ...)
 		call add(l:project_query_options, l:elem)
 	endfor
 
-	if has_key(l:args, 'config')
-		let l:project_config = ' -c ' . s:bob_config_path . '/' . l:args.config
+	if has_key(a:args, 'config')
+		let l:project_config = ' -c ' . s:bob_config_path . '/' . a:args.config
 	else
 		let l:project_config = ''
 	endif
@@ -380,11 +404,6 @@ function! s:Project(bang, package, ...)
 
 	echo 'generate configuration for YouCompleteMe …'
 	call s:CompilationDatabase()
-
-	" store bob command to file
-	if writefile([l:project_command], s:bob_base_path . '/.vim-bob_project.log', 'a') == -1
-		echom 'error writing to .vim-bob_project.log'
-	endif
 endfunction
 
 function! s:Dev(bang, ...)
@@ -961,6 +980,7 @@ command! -nargs=1 -complete=custom,s:PackageTreeComplete BobCheckout call s:Chec
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobDev call s:Dev("<bang>",<f-args>)
 command! BobPersist call s:Persist()
 command! -bang -nargs=* -complete=custom,s:PackageAndConfigComplete BobProject call s:Project("<bang>",<f-args>)
+command! -nargs=* -complete=custom,s:PackageAndConfigComplete BobProjectNoBuild call s:ProjectNoBuild(<f-args>)
 command! -nargs=+ -complete=custom,s:PackageAndConfigComplete BobYcm call s:Ycm(<f-args>)
 command! -bang -nargs=* BobSearchSource call s:SearchSource(<q-args>, <bang>0)
 command! -nargs=? -complete=custom,s:ProjectPackageComplete BobOpen call s:Open(<f-args>)

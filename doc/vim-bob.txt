@@ -119,6 +119,14 @@ Commands                                         *vim-bob-commands*
          the window to the root directory of the source directory
          (the directory `workspace` in `dev/src`) of the current file.
 
+                                                 *vim-bob:BobProjectNoBuild*
+:BobProjectNoBuild [package] ([configuration] ([parameters]))
+         Same as |BobProject| but does not trigger a build. Instead, it
+         assumes that all build artifacts are already existing.
+         This is useful if one does not want to trigger any changes to the
+         local state that might be caused by the build, i.e., checking out
+         later versions or moving changes to attic, etc.
+
                                                  *vim-bob:BobClean*
 :BobClean
          Deletes `dev/build` and `dev/dist` directories to force rebuilding of
