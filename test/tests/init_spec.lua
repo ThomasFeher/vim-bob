@@ -1,0 +1,5 @@
+describe("init", function()
+	it("should succeed on valid recipes", function()
+		assert.has.errors(function() vim.cmd({'BobInit'}) end)
+	end)
+end)

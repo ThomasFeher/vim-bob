@@ -18,9 +18,11 @@ The usual workflow is as follows:
   specified package.
 * Start editing files of that package.
 * Run |:make| to rebuild the project.
+* Alternatively to |:BobGoto| use |:BobOpen| to open a file from a certain
+  package directly.
 
-|:BobProject| automatically prevents writing to files in `dev/build/` and
-`dev/dist`, because these files will be overwritten by Bob during a build and
+|:BobProject| automatically marks files in `dev/build/` and `dev/dist` as
+|readonly|, because these files will be overwritten by Bob during a build and
 it is easy to confuse them with equally named files in `dev/src/`. For example
 build error messages could refer to header files of depending modules and
 therefore jumping to the error jumps into `dev/dist/`. Rebuilding the project
@@ -28,7 +30,7 @@ after fixing an error in such a file would then overwrite the file and all
 changes would be lost.
 However, there is currently no way to remove this behaviour via vim-bobs API.
 If necessary, this behaviour can be removed manually by deleting |augroup|
-`bob` via `:augroup! bob` .
+`vim_bob_readonly_dist` via `:augroup! vim_bob_readonly_dist` .
 
 ==============================================================================
 
@@ -49,23 +51,42 @@ Commands                                         *vim-bob-commands*
 
                                                  *vim-bob:BobGoto*
 :BobGoto [package]
-         Changes the current working directory of the buffer to be the source
-         directory of the given [package].
+         Changes the current working directory of the window (using |lcd|) to
+         be the source directory of the given [package].
          Provided for auto-completion:
          * dependencies of current project exclusively
          * non-root recipes
 
 :BobGoto! [package]
-          Like ":BobGoto" but sets the current working directory globally.
+          Like ":BobGoto" but sets the current working directory globally
+          (using |cd|).
 
                                                  *vim-bob:BobGotoAll*
 :BobGotoAll [package]
-         Changes the current working directory of the buffer to be the source
-         directory of the given [package].
+         Changes the current working directory of the window (using |lcd|) to
+         be the source directory of the given [package].
          Provides all available root recipes for auto-completion.
 
 :BobGotoAll! [package]
-          Like ":BobGotoAll" but sets the current working directory globally.
+          Like ":BobGotoAll" but sets the current working directory globally
+          (using |cd|).
+
+                                                 *vim-bob:BobOpen*
+:BobOpen [package]
+         Open a file selector window where alle files of [package] are
+         provided. The selected file will be opened.
+         Requires one of the supported file selection backends (fzf.vim and
+         telescope.nvim) to be installed.
+         If no package is provided the path of the recipe repository is used
+         as search path for the file selector. In case the default FZF command
+         for search is used (`find`) this can be very much files including all
+         the files the `dev` and `work` folder. In order to prevent this use a
+         different search tool like `fd` or `ripgrep` or adjust the options of
+         `find` accordingly setting the environment variable
+         `FZF_DEFAULT_COMMAND`.
+         Examples for using `fd` as search command for FZF:
+         using shell: `export FZF_DEFAULT_COMMAND="fd --type f "`
+         using init.vim: `let $FZF_DEFAULT_COMMAND = "fd --type f "`
 
                                                  *vim-bob:BobDev*
 :BobDev ([package] ([configuration] ([parameters])))
@@ -91,6 +112,20 @@ Commands                                         *vim-bob-commands*
          the build system to generate a "compile_commands.json" file in the
          build directory. CMake will do this if called with
          "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".
+         Additionally the Bob command that is executed is appended to
+         `.vim-bob_project.log` which allows to recreate the project in later
+         sessions.
+         Additionally autocmds are created that set the working directory of
+         the window to the root directory of the source directory
+         (the directory `workspace` in `dev/src`) of the current file.
+
+                                                 *vim-bob:BobProjectNoBuild*
+:BobProjectNoBuild [package] ([configuration] ([parameters]))
+         Same as |BobProject| but does not trigger a build. Instead, it
+         assumes that all build artifacts are already existing.
+         This is useful if one does not want to trigger any changes to the
+         local state that might be caused by the build, i.e., checking out
+         later versions or moving changes to attic, etc.
 
                                                  *vim-bob:BobClean*
 :BobClean
@@ -134,6 +169,10 @@ Commands                                         *vim-bob-commands*
          Run `bob status` on [package] or on the current project if no
          [package] is provided.
 
+                                                 *vim-bob:BobInspect*
+:BobInspect
+         Print internal state of the vim-bob plugin. Used mainly for debugging.
+
 ==============================================================================
 
 Configuration                                    *vim-bob-configuration*
@@ -166,6 +205,13 @@ g:bob_verbose
          Default: 0
          If set to 1 additional messages are printed. This is mainly for
          debugging.
+
+g:bob_prefix                                     *g:bob_prefix*
+         Default: ''
+         This string will be prepended (separated by a space character) to
+         each invocation of the `bob` command.
+         This allows for example to run Bob inside of a container by setting
+         the string to `docker run --rm -i -v ${PWD}:/build my_container` .
 
 ==============================================================================
 

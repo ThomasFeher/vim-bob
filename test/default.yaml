@@ -1,0 +1,5 @@
+command:
+  dev:
+    verbosity: 0
+  build:
+    verbosity: 0

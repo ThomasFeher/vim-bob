@@ -1,0 +1,15 @@
+root: true
+
+checkoutScript: |
+  touch app_b.source
+buildScript: |
+  cat >compile_commands.json <<-END
+  [
+  {
+    "app_a": "entry 1"
+  },
+  {
+    "app_a": "entry 2"
+  }
+  ]
+  END
