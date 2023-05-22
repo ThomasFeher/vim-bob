@@ -236,6 +236,7 @@ function! s:ProjectNoBuild(package, ...)
 		endif
 	endif
 
+	call s:DevImpl(0, a:package, extend({'use_prefix': 1, 'no_build': 1}, l:args))
 	call s:ProjectImpl(a:package, l:args)
 endfunction
 
@@ -451,6 +452,9 @@ function! s:DevImpl(bang, package, args)
 		let l:command = l:command . ' ' . join(a:args.args)
 	endif
 	let &makeprg = l:command
+	if has_key(a:args, 'no_build') && a:args.no_build
+		return
+	endif
 
 	try
 		" we need to get the error code from the actual make command instead
