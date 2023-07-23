@@ -299,11 +299,8 @@ function! s:ProjectImpl(package, args)
 	" the container which is of no use on the host where we want to use code
 	" navigation (which needs the source directories) and language servers
 	" (which need the compilation databases from the build directories)
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{name} | {src} | {build}" ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path --fail -f "{name} | {src} | {build}" ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
-	" TODO the query fails if any of the queried paths does not exist, but it
-	" does not return an error, instead it prints an error message on stdout,
-	" which seems a bug to me
 	if v:shell_error
 		echoerr "error calling '" . l:command . "': " . trim(l:result)
 		return
