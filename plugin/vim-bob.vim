@@ -49,6 +49,11 @@ endfunction
 
 function! s:Init(path)
 	let l:bob_base_path = empty(a:path) ? getcwd() : fnamemodify(a:path, ':p')
+	if !empty($MSYSTEM)
+		" we might get a windows path when we are in MSYS so we need to
+		" convert that to an MSYS path
+		let l:bob_base_path = system("cygpath " . l:bob_base_path)
+	endif
 	" not using `--directory` but `cd` instead, because when running inside of
 	" a container via `g:bob_prefix` we would pass the path on the host to Bob
 	" running in the container, where the path is very likely different
