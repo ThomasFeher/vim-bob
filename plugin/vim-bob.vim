@@ -302,7 +302,7 @@ function! s:ProjectImpl(package, args)
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path --fail -f "{name} | {src} | {build}" ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
 	if v:shell_error
-		echoerr "error calling '" . l:command . "': " . trim(l:result)
+		echoerr "error calling '" . l:command . "': " . join(l:result)
 		return
 	endif
 	let l:idx = 0
