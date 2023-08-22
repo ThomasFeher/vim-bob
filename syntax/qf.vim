@@ -1,10 +1,10 @@
-syn match qfBobPackageName "|| >> .*$"
-syn match qfBobAttic "||    ATTIC.*$"
-syn match qfBobBuild "||    BUILD.*$"
-syn match qfBobCheckout "||    CHECKOUT.*$"
-syn match qfBobPackage "||    PACKAGE.*$"
-syn match qfBobPrune "||    PRUNE.*$"
-syn match qfBobResult "|| Build result is in .*$"
+syn match qfBobPackageName " >> \S*$"
+syn match qfBobAttic "    ATTIC.*$"
+syn match qfBobBuild "    BUILD.*$"
+syn match qfBobCheckout "    CHECKOUT.*$"
+syn match qfBobPackage "    PACKAGE.*$"
+syn match qfBobPrune "    PRUNE.*$"
+syn match qfBobResult " Build result is in .*$"
 
 hi def link qfBobPackageName Title
 
