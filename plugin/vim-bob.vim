@@ -300,7 +300,7 @@ function! s:ProjectImpl(package, args)
 	" does not return an error, instead it prints an error message on stdout,
 	" which seems a bug to me
 	if v:shell_error
-		echoerr "error calling '" . l:command . "': " . trim(l:result)
+		echoerr "error calling '" . l:command . "': " . join(l:result)
 		return
 	endif
 	let l:idx = 0
