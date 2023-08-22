@@ -552,7 +552,7 @@ function! s:CompilationDatabase()
 		if g:bob_verbose
 			echo "checking for compile_commands.json in " . l:build_dir
 		endif
-		let l:file = fnameescape(l:build_dir . '/compile_commands.json')
+		let l:file = fnameescape(s:bob_base_path . '/' . l:build_dir . '/compile_commands.json')
 		if filereadable(l:file)
 			if g:bob_verbose
 				echo "found"
