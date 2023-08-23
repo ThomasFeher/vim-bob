@@ -5,7 +5,7 @@ let s:is_initialized = 0
 let s:script_path = expand('<sfile>:h')
 " command line options that are not suitable for calling bob-querry commands
 "   single part command line options
-let s:query_option_filter = ['-b', '--build-only', '-v', '-vv', '-vvv', '--verbose', '--clean', '--force', '-q', '-qq', '-qqq', '-j', '--jobs']
+let s:query_option_filter = ['-b', '--build-only', '-v\+', '--verbose', '--clean', '--force', '-q\+', '-j', '--jobs']
 "   two-part command line options (only first part is specified here)
 let s:query_option_filter_2 = ['--destination']
 " the name of the project, effectively the name of the Bob package
@@ -264,8 +264,15 @@ function! s:ProjectImpl(package, args)
 			let l:was_2_arg = 1
 			continue
 		endif
-		if match(s:query_option_filter, l:elem) != -1
-			" single part argument
+		" single part argument
+		let l:elem_found = 0
+		" compare with each element in the filter list
+		for l:filter_elem in s:query_option_filter
+			if match(l:elem, l:filter_elem) != -1
+				let l:elem_found = 1
+			endif
+		endfor
+		if l:elem_found == 1
 			continue
 		endif
 		call add(l:project_query_options, l:elem)
