@@ -251,6 +251,11 @@ function! s:ProjectImpl(package, args)
 	endif
 
 	" remove options that are not accepted by the query command
+	if g:bob_verbose
+		echo "generating query options from options"
+		echo "  options are: "
+		echo l:project_options
+	endif
 	let l:project_query_options = []
 	let l:was_2_arg = 0 " specify whether the previous element was a 2-part argument
 	for l:elem in l:project_options
@@ -273,6 +278,9 @@ function! s:ProjectImpl(package, args)
 			endif
 		endfor
 		if l:elem_found == 1
+			if g:bob_verbose
+				echo "  removing: " . l:elem
+			endif
 			continue
 		endif
 		call add(l:project_query_options, l:elem)
