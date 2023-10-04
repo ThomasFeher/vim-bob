@@ -305,23 +305,15 @@ function! s:ProjectImpl(package, args)
 	call add(l:list, a:package)
 	let l:project_package_src_dirs = {}
 	echo 'gather package paths …'
-	" not using g:bob_prefix here, because this would return the path inside
-	" the container which is of no use on the host where we want to use code
-	" navigation (which needs the source directories) and language servers
-	" (which need the compilation databases from the build directories)
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{name} | {src} | {build}" ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
-	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
-	" TODO the query fails if any of the queried paths does not exist, but it
-	" does not return an error, instead it prints an error message on stdout,
-	" which seems a bug to me
-	if v:shell_error
-		echoerr "error calling '" . l:command . "': " . join(l:result)
-		return
-	endif
+	try
+		let l:query = s:QueryPaths(l:list, l:project_query_options + [l:project_config])
+	catch
+		echoerr "Querying paths failed.: " . v:exception
+	endtry
 	let l:idx = 0
 	let l:project_package_build_dirs = {}
-	for l:package in l:list
-		let l:matches = matchlist(l:result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
+	for l:package in l:query.list
+		let l:matches = matchlist(l:query.result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
 		if empty(l:matches)
 			if g:bob_verbose
 				echom 'skipped caching of ' . l:package
@@ -420,6 +412,55 @@ function! s:ProjectImpl(package, args)
 
 	echo 'generate configuration for YouCompleteMe …'
 	call s:CompilationDatabase()
+endfunction
+
+" returns a dictionary with fields:
+"   list: the package list, either the one given as parameter a:package_list,
+"         or a reduced list, if packages from the list did not provide src and
+"         dist directories
+"   result: the query result coresponding to each of the packages contained in
+"           `list`
+function! s:QueryPaths(package_list, query_params)
+	" not using g:bob_prefix here, because this would return the path inside
+	" the container which is of no use on the host where we want to use code
+	" navigation (which needs the source directories) and language servers
+	" (which need the compilation databases from the build directories)
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path --fail -f "{name} | {src} | {build}" ' . join(a:query_params, ' ') . ' ' . join(a:package_list, ' ') . ' 2>&1'
+	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
+	if v:shell_error
+		" Remove the erroneous package from the package list and retry.
+		"   parse package name that failed
+		let l:err_message = matchlist(join(l:result), 'Director\(ies\|y\) for {[a-z, ]\+} steps\? of package \(\S\+\) not present.')
+		if empty(l:err_message)
+			throw "Could not parse Bob error message: " . join(l:result)
+		endif
+		let l:err_package = l:err_message[2]
+		if empty(l:err_package)
+			" could not parse name, something else happened
+			throw "error calling '" . l:command . "': " . join(l:result)
+		endif
+		"   create a new list without the failed package
+		let l:new_list = []
+		if g:bob_verbose
+			echom "Error calling '" . l:command . "': " . join(l:result) . " Removing package and retrying ..."
+		endif
+		for l:item in a:package_list
+			if match(l:item, l:err_package . '$') == -1
+				call add(l:new_list, l:item)
+			elseif g:bob_verbose
+				echo "removing " . l:item . " from package list"
+			else
+			endif
+		endfor
+		echohl WarningMsg | echom "ignoring package " . l:err_package | echohl None
+		if len(a:package_list) > 1
+			return s:QueryPaths(l:new_list, a:query_params)
+		else
+			throw "None of the packages provides src and dist directories, I'm giving up."
+		endif
+	endif
+	call assert_equal(len(a:package_list), len(l:result))
+	return #{list: a:package_list, result: l:result}
 endfunction
 
 function! s:Dev(bang, ...)

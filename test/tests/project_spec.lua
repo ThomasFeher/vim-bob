@@ -65,4 +65,10 @@ describe("BobProject", function()
 			assert(not string.find(output, "Running Bob failed."), output)
 		end)
 	end
+	it("should ignore packages that do not create src or build directories", function()
+		-- using the bang variant here, because otherwise :make tries to open a file "Duration: 0" which is the first part of Bob's last output line, TODO we need to avoid that somehow, e.g., by modifying errorformat option
+		vim.cmd("BobProject! app_c")
+		local output = vim.api.nvim_exec2('messages', { output = true }).output
+		assert(string.find(output, "ignoring package lib_empty"))
+	end)
 end)
