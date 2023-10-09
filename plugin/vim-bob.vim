@@ -427,6 +427,10 @@ function! s:QueryPaths(package_list, query_params)
 	" (which need the compilation databases from the build directories)
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path --fail -f "{name} | {src} | {build}" ' . join(a:query_params, ' ') . ' ' . join(a:package_list, ' ') . ' 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
+	if g:bob_verbose
+		echom '  ' . l:command
+		echom '  ' . join(l:result)
+	endif
 	if v:shell_error
 		" Remove the erroneous package from the package list and retry.
 		"   parse package name that failed
