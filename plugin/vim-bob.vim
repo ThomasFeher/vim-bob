@@ -7,7 +7,7 @@ let s:script_path = expand('<sfile>:h')
 "   single part command line options
 let s:query_option_filter = ['-b', '--build-only', '-v', '-vv', '-vvv', '--verbose', '--clean', '--force', '-q', '-qq', '-qqq']
 "   two-part command line options (only first part is specified here)
-let s:query_option_filter_2 = ['--destination']
+let s:query_option_filter_2 = ['--destination', '--download']
 " the name of the project, effectively the name of the Bob package
 let s:project_name = ''
 " the configuration used for the current project as given to `BobProject`,
