@@ -6,7 +6,9 @@
 describe("BobProject", function()
 	before_each(function()
 		vim.fn.delete("./dev", "rf") -- better vim.loop.fs_rmdir
+		vim.cmd("messages clear")
 		vim.cmd("BobInit")
+		vim.g.bob_config_path = "./configurations"
 	end)
 	it("should copy the compilation database of a standalone application", function()
 		-- using the bang variant here, because otherwise :make tries to open a file "Duration: 0" which is the first part of Bob's last output line, TODO we need to avoid that somehow, e.g., by modifying errorformat option
@@ -54,5 +56,19 @@ describe("BobProject", function()
 }
 ]]=]
 		assert(result == reference, "result:\n" .. result .. "\nreference:\n" .. reference)
+	end)
+	for _, item in ipairs({'-b', '--build-only', '-v', '-vv', '-vvv', '--verbose', '--clean', '--force', '-q','-qq',  '-qqq', "-j", "-j2", "--jobs", '--upload'}) do
+		it("should build with flag " .. item .. " given", function()
+			-- using the bang variant here, because otherwise :make tries to open a file "Duration: 0" which is the first part of Bob's last output line, TODO we need to avoid that somehow, e.g., by modifying errorformat option
+			vim.cmd("BobProject! app_b native " .. item)
+			local output = vim.api.nvim_exec2('messages', { output = true }).output
+			assert(not string.find(output, "Running Bob failed."), output)
+		end)
+	end
+	it("should ignore packages that do not create src or build directories", function()
+		-- using the bang variant here, because otherwise :make tries to open a file "Duration: 0" which is the first part of Bob's last output line, TODO we need to avoid that somehow, e.g., by modifying errorformat option
+		vim.cmd("BobProject! app_c")
+		local output = vim.api.nvim_exec2('messages', { output = true }).output
+		assert(string.find(output, "ignoring package lib_empty"))
 	end)
 end)

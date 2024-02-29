@@ -5,7 +5,7 @@ let s:is_initialized = 0
 let s:script_path = expand('<sfile>:h')
 " command line options that are not suitable for calling bob-querry commands
 "   single part command line options
-let s:query_option_filter = ['-b', '--build-only', '-v', '-vv', '-vvv', '--verbose', '--clean', '--force', '-q', '-qq', '-qqq']
+let s:query_option_filter = ['-b', '--build-only', '-v\+', '--verbose', '--clean', '--force', '-q\+', "-j\d\*", "--jobs\d\*", '--upload']
 "   two-part command line options (only first part is specified here)
 let s:query_option_filter_2 = ['--destination', '--download']
 " the name of the project, effectively the name of the Bob package
@@ -211,7 +211,7 @@ function! s:Project(bang, package, ...)
 		let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 1}, l:args))
 	catch
 		echohl WarningMsg
-		echo'Running Bob failed. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
+		echom 'Running Bob failed. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
 		echohl None
 		return
 	endtry
@@ -251,6 +251,11 @@ function! s:ProjectImpl(package, args)
 	endif
 
 	" remove options that are not accepted by the query command
+	if g:bob_verbose
+		echo "generating query options from options"
+		echo "  options are: "
+		echo l:project_options
+	endif
 	let l:project_query_options = []
 	let l:was_2_arg = 0 " specify whether the previous element was a 2-part argument
 	for l:elem in l:project_options
@@ -264,8 +269,18 @@ function! s:ProjectImpl(package, args)
 			let l:was_2_arg = 1
 			continue
 		endif
-		if match(s:query_option_filter, l:elem) != -1
-			" single part argument
+		" single part argument
+		let l:elem_found = 0
+		" compare with each element in the filter list
+		for l:filter_elem in s:query_option_filter
+			if match(l:elem, l:filter_elem) != -1
+				let l:elem_found = 1
+			endif
+		endfor
+		if l:elem_found == 1
+			if g:bob_verbose
+				echo "  removing: " . l:elem
+			endif
 			continue
 		endif
 		call add(l:project_query_options, l:elem)
@@ -290,23 +305,15 @@ function! s:ProjectImpl(package, args)
 	call add(l:list, a:package)
 	let l:project_package_src_dirs = {}
 	echo 'gather package paths …'
-	" not using g:bob_prefix here, because this would return the path inside
-	" the container which is of no use on the host where we want to use code
-	" navigation (which needs the source directories) and language servers
-	" (which need the compilation databases from the build directories)
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path -f "{name} | {src} | {build}" ' . l:project_config . ' ' . join(l:project_query_options, ' ') . ' ' . join(l:list, ' ') . ' 2>&1'
-	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
-	" TODO the query fails if any of the queried paths does not exist, but it
-	" does not return an error, instead it prints an error message on stdout,
-	" which seems a bug to me
-	if v:shell_error
-		echoerr "error calling '" . l:command . "': " . trim(l:result)
-		return
-	endif
+	try
+		let l:query = s:QueryPaths(l:list, l:project_query_options + [l:project_config])
+	catch
+		echoerr "Querying paths failed.: " . v:exception
+	endtry
 	let l:idx = 0
 	let l:project_package_build_dirs = {}
-	for l:package in l:list
-		let l:matches = matchlist(l:result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
+	for l:package in l:query.list
+		let l:matches = matchlist(l:query.result[l:idx], '^\(.*\) | \(.*\) | \(.*\)$')
 		if empty(l:matches)
 			if g:bob_verbose
 				echom 'skipped caching of ' . l:package
@@ -405,6 +412,59 @@ function! s:ProjectImpl(package, args)
 
 	echo 'generate configuration for YouCompleteMe …'
 	call s:CompilationDatabase()
+endfunction
+
+" returns a dictionary with fields:
+"   list: the package list, either the one given as parameter a:package_list,
+"         or a reduced list, if packages from the list did not provide src and
+"         dist directories
+"   result: the query result coresponding to each of the packages contained in
+"           `list`
+function! s:QueryPaths(package_list, query_params)
+	" not using g:bob_prefix here, because this would return the path inside
+	" the container which is of no use on the host where we want to use code
+	" navigation (which needs the source directories) and language servers
+	" (which need the compilation databases from the build directories)
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path --fail -f "{name} | {src} | {build}" ' . join(a:query_params, ' ') . ' ' . join(a:package_list, ' ') . ' 2>&1'
+	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
+	if g:bob_verbose
+		echom '  ' . l:command
+		echom '  ' . join(l:result)
+	endif
+	if v:shell_error
+		" Remove the erroneous package from the package list and retry.
+		"   parse package name that failed
+		let l:err_message = matchlist(join(l:result), 'Director\(ies\|y\) for {[a-z, ]\+} steps\? of package \(\S\+\) not present.')
+		if empty(l:err_message)
+			throw "Could not parse Bob error message: " . join(l:result)
+		endif
+		let l:err_package = l:err_message[2]
+		if empty(l:err_package)
+			" could not parse name, something else happened
+			throw "error calling '" . l:command . "': " . join(l:result)
+		endif
+		"   create a new list without the failed package
+		let l:new_list = []
+		if g:bob_verbose
+			echom "Error calling '" . l:command . "': " . join(l:result) . " Removing package and retrying ..."
+		endif
+		for l:item in a:package_list
+			if match(l:item, l:err_package . '$') == -1
+				call add(l:new_list, l:item)
+			elseif g:bob_verbose
+				echo "removing " . l:item . " from package list"
+			else
+			endif
+		endfor
+		echohl WarningMsg | echom "ignoring package " . l:err_package | echohl None
+		if len(a:package_list) > 1
+			return s:QueryPaths(l:new_list, a:query_params)
+		else
+			throw "None of the packages provides src and dist directories, I'm giving up."
+		endif
+	endif
+	call assert_equal(len(a:package_list), len(l:result))
+	return #{list: a:package_list, result: l:result}
 endfunction
 
 function! s:Dev(bang, ...)
@@ -552,7 +612,7 @@ function! s:CompilationDatabase()
 		if g:bob_verbose
 			echo "checking for compile_commands.json in " . l:build_dir
 		endif
-		let l:file = fnameescape(l:build_dir . '/compile_commands.json')
+		let l:file = fnameescape(s:bob_base_path . '/' . l:build_dir . '/compile_commands.json')
 		if filereadable(l:file)
 			if g:bob_verbose
 				echo "found"
