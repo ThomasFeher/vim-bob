@@ -218,8 +218,14 @@ function! s:Project(bang, package, ...)
 
 	call s:ProjectImpl(a:package, l:args)
 
+	let l:log_string = [a:package . ":",
+				\"    prefix: " . g:bob_prefix,
+				\"    directory: " . s:bob_base_path,
+				\"    arguments: " . l:args,
+				\"    date: " . strftime('%FT%H:%M:%S'),
+				\"    command: " . l:project_command]
 	" store bob command to file
-	if writefile([l:project_command], s:bob_base_path . '/.vim-bob_project.log', 'a') == -1
+	if writefile([l:log_string], s:bob_base_path . '/.vim-bob_project.log', 'a') == -1
 		echom 'error writing to .vim-bob_project.log'
 	endif
 endfunction
