@@ -226,7 +226,7 @@ function! s:Project(bang, package, ...)
 	if has_key(l:args, "config")
 		let l:args_config = l:args.config
 	endif
-	let l:log_string = [a:package . ":",
+	let l:log_string = ["- " . a:package . ":",
 				\"    prefix: " . g:bob_prefix,
 				\"    directory: " . s:bob_base_path,
 				\"    arguments: [" . l:args_args . "]",
