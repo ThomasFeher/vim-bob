@@ -228,9 +228,9 @@ function! s:Project(bang, package, ...)
 	endif
 	let l:log_string = ["- " . a:package . ":",
 				\"    prefix: " . g:bob_prefix,
+				\"    configuration: " . l:args_config,
 				\"    directory: " . s:bob_base_path,
 				\"    arguments: [" . l:args_args . "]",
-				\"    configuration: " . l:args_config,
 				\"    date: " . strftime('%FT%H:%M:%S'),
 				\"    command: " . l:project_command]
 	" store bob command to file
