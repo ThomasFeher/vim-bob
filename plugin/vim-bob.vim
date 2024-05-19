@@ -195,15 +195,61 @@ function! s:GetStatus(...)
 	echo l:output
 endfunction
 
-function! s:Project(bang, package, ...)
-	call s:CheckInit()
-
+function! s:Project(bang, ...)
 	let l:args = {}
 	if a:0 > 0
-		" the first option is always the configuration (without the '-c')
-		let l:args.config = a:1
+		call s:CheckInit()
+		let l:package = a:1
 		if a:0 > 1
-			let l:args.args = a:000[1:-1]
+			" the second option is always the configuration (without the '-c')
+			let l:args.config = a:2
+			if a:0 > 2
+				let l:args.args = a:000[2:-1]
+			endif
+		endif
+	else
+		if &filetype =~? 'vim-bob_project_log'
+			let l:line_nr = line('.')
+			let l:line = getline(l:line_nr)
+			while l:line !~ '^- '
+				echo l:line_nr . ': ' . l:line
+				if l:line_nr == 1
+					throw 'error: could not find a valid log entry'
+				endif
+				let l:line_nr = l:line_nr - 1
+				let l:line = getline(l:line_nr)
+			endwhile
+			" now we are at the begin of the entry
+			" parse prefix
+			let l:line = getline(l:line_nr + 1)
+			let l:match = matchlist(l:line, '    prefix: \(.*\)')
+			if empty(l:match)
+				throw 'internal error: expected entry `prefix` at line ' . (l:line_nr + 1)
+			endif
+			let g:bob_prefix = l:match[1]
+			" parse directory
+			let l:line = getline(l:line_nr + 3)
+			let l:match = matchlist(l:line, '    directory: \(.*\)')
+			if empty(l:match)
+				throw 'internal error: expected entry `directory` at line ' . (l:line_nr + 3)
+			endif
+			call s:Init(match[1])
+			" parse configuration
+			let l:line = getline(l:line_nr + 2)
+			let l:match = matchlist(l:line, '    configuration: \(.*\)')
+			if empty(l:match)
+				throw 'internal error: expected entry `configuration` at line ' . (l:line_nr + 2)
+			endif
+			let l:args.config = l:match[1]
+			" parse arguments
+			let l:line = getline(l:line_nr + 4)
+			let l:match = matchlist(l:line, '    arguments: \(.*\)')
+			if empty(l:match)
+				throw 'internal error: expected entry `arguments` at line ' . (l:line_nr + 4)
+			endif
+			let l:args.args = l:match[1]
+		else
+			throw 'error: too few arguments or not a .vim-bob_project.log file'
 		endif
 	endif
 	" build the project
