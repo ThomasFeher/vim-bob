@@ -101,7 +101,7 @@ Commands                                         *vim-bob-commands*
          messages are parsed and gathered in the |quickfix| window.
 
                                                  *vim-bob:BobProject*
-:BobProject [package] ([configuration] ([parameters]))
+:BobProject ([package] ([configuration] ([parameters])))
          Same as |BobDev| but additionally sets the current project to that
          package. That means that |:BobGoto| will provide only dependencies of
          that package for auto-completion, but opposing to |:BobGotoAll| it
@@ -114,13 +114,15 @@ Commands                                         *vim-bob-commands*
          "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".
          Additionally the Bob command that is executed is appended to
          `.vim-bob_project.log` which allows to recreate the project in later
-         sessions.
+         sessions. Restarting such a session is achieved by moving the cursor
+         to a line belonging to the desired entry an calling |BobProject|
+         without further arguments.
          Additionally autocmds are created that set the working directory of
          the window to the root directory of the source directory
          (the directory `workspace` in `dev/src`) of the current file.
 
                                                  *vim-bob:BobProjectNoBuild*
-:BobProjectNoBuild [package] ([configuration] ([parameters]))
+:BobProjectNoBuild ([package] ([configuration] ([parameters])))
          Same as |BobProject| but does not trigger a build. Instead, it
          assumes that all build artifacts are already existing.
          This is useful if one does not want to trigger any changes to the
