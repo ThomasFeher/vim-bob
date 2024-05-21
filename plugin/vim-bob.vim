@@ -212,7 +212,6 @@ function! s:Project(bang, ...)
 			let l:line_nr = line('.')
 			let l:line = getline(l:line_nr)
 			while l:line !~ '^- '
-				echo l:line_nr . ': ' . l:line
 				if l:line_nr == 1
 					throw 'error: could not find a valid log entry'
 				endif
@@ -220,6 +219,8 @@ function! s:Project(bang, ...)
 				let l:line = getline(l:line_nr)
 			endwhile
 			" now we are at the begin of the entry
+			" parse package name
+			let l:package = l:line[2:-2]
 			" parse prefix
 			let l:line = getline(l:line_nr + 1)
 			let l:match = matchlist(l:line, '    prefix: \(.*\)')
@@ -247,7 +248,8 @@ function! s:Project(bang, ...)
 			if empty(l:match)
 				throw 'internal error: expected entry `arguments` at line ' . (l:line_nr + 4)
 			endif
-			let l:args.args = l:match[1]
+			let l:args_string = trim(l:match[1], '[]')
+			let l:args.args = split(l:args_string, ', ')
 		else
 			throw 'error: too few arguments or not a .vim-bob_project.log file'
 		endif
