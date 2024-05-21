@@ -259,6 +259,7 @@ function! s:Project(bang, ...)
 		let l:project_command = s:DevImpl(a:bang, l:package, extend({'use_prefix': 1}, l:args))
 	catch
 		echohl WarningMsg
+		echom v:exception
 		echom 'Running Bob failed. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
 		echohl None
 		return
