@@ -254,7 +254,7 @@ function! s:Project(bang, ...)
 	endif
 	" build the project
 	try
-		let l:project_command = s:DevImpl(a:bang, a:package, extend({'use_prefix': 1}, l:args))
+		let l:project_command = s:DevImpl(a:bang, l:package, extend({'use_prefix': 1}, l:args))
 	catch
 		echohl WarningMsg
 		echom 'Running Bob failed. Not all features of vim-bob''s project mode might be available. Re-run :BobProject as soon as these errors are fixed'
@@ -262,7 +262,7 @@ function! s:Project(bang, ...)
 		return
 	endtry
 
-	call s:ProjectImpl(a:package, l:args)
+	call s:ProjectImpl(l:package, l:args)
 
 	let l:args_args = ""
 	if has_key(l:args, "args")
@@ -272,7 +272,7 @@ function! s:Project(bang, ...)
 	if has_key(l:args, "config")
 		let l:args_config = l:args.config
 	endif
-	let l:log_string = ["- " . a:package . ":",
+	let l:log_string = ["- " . l:package . ":",
 				\"    prefix: " . g:bob_prefix,
 				\"    configuration: " . l:args_config,
 				\"    directory: " . s:bob_base_path,
