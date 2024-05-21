@@ -279,7 +279,7 @@ function! s:Project(bang, ...)
 				\"    configuration: " . l:args_config,
 				\"    directory: " . s:bob_base_path,
 				\"    arguments: [" . l:args_args . "]",
-				\"    date: " . strftime('%FT%H:%M:%S'),
+				\"    date: \"" . strftime('%FT%H:%M:%S') . "\"",
 				\"    command: " . l:project_command]
 	" store bob command to file
 	if writefile(l:log_string, s:bob_base_path . '/.vim-bob_project.log', 'a') == -1
