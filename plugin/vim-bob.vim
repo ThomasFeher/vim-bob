@@ -195,16 +195,16 @@ function! s:GetStatus(...)
 	echo l:output
 endfunction
 
-function! s:Project(bang, ...)
+function! s:ParseProjectArgs(args)
 	let l:args = {}
-	if a:0 > 0
+	if len(a:args) > 0
 		call s:CheckInit()
-		let l:package = a:1
-		if a:0 > 1
+		let l:package = a:args[0]
+		if len(a:args) > 1
 			" the second option is always the configuration (without the '-c')
-			let l:args.config = a:2
-			if a:0 > 2
-				let l:args.args = a:000[2:-1]
+			let l:args.config = a:args[1]
+			if len(a:args) > 2
+				let l:args.args = a:args[2:-1]
 			endif
 		endif
 	else
@@ -254,6 +254,12 @@ function! s:Project(bang, ...)
 			throw 'error: too few arguments or not a .vim-bob_project.log file'
 		endif
 	endif
+	return [l:package, l:args]
+endfunction
+
+function! s:Project(bang, ...)
+	let [l:package, l:args] = s:ParseProjectArgs(a:000)
+
 	" build the project
 	try
 		let l:project_command = s:DevImpl(a:bang, l:package, extend({'use_prefix': 1}, l:args))
@@ -288,20 +294,11 @@ function! s:Project(bang, ...)
 	endif
 endfunction
 
-function! s:ProjectNoBuild(package, ...)
-	call s:CheckInit()
+function! s:ProjectNoBuild(...)
+	let [l:package, l:args] = s:ParseProjectArgs(a:000)
 
-	let l:args = {}
-	if a:0 > 0
-		" the first option is always the configuration (without the '-c')
-		let l:args.config = a:1
-		if a:0 > 1
-			let l:args.args = a:000[1:-1]
-		endif
-	endif
-
-	call s:DevImpl(0, a:package, extend({'use_prefix': 1, 'no_build': 1}, l:args))
-	call s:ProjectImpl(a:package, l:args)
+	call s:DevImpl(0, l:package, extend({'use_prefix': 1, 'no_build': 1}, l:args))
+	call s:ProjectImpl(l:package, l:args)
 endfunction
 
 function! s:ProjectImpl(package, args)
