@@ -48,7 +48,7 @@ function! s:EscapeForMakeprg(text)
 endfunction
 
 function! s:Init(path)
-	let l:bob_base_path = empty(a:path) ? getcwd() : fnamemodify(a:path, ':p')
+	let l:bob_base_path = empty(a:path) ? getcwd() : fnamemodify(a:path, ':p:h')
 	" not using `--directory` but `cd` instead, because when running inside of
 	" a container via `g:bob_prefix` we would pass the path on the host to Bob
 	" running in the container, where the path is very likely different
