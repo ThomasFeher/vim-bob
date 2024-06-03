@@ -229,12 +229,7 @@ function! s:ParseProjectArgs(args)
 			endif
 			let g:bob_prefix = l:match[1]
 			" parse directory
-			let l:line = getline(l:line_nr + 3)
-			let l:match = matchlist(l:line, '    directory: \(.*\)')
-			if empty(l:match)
-				throw 'internal error: expected entry `directory` at line ' . (l:line_nr + 3)
-			endif
-			call s:Init(match[1])
+			call s:Init(expand("%:p:h"))
 			" parse configuration
 			let l:line = getline(l:line_nr + 2)
 			let l:match = matchlist(l:line, '    configuration: \(.*\)')
@@ -284,7 +279,6 @@ function! s:Project(bang, ...)
 	let l:log_string = ["- " . l:package . ":",
 				\"    prefix: " . g:bob_prefix,
 				\"    configuration: " . l:args_config,
-				\"    directory: " . s:bob_base_path,
 				\"    arguments: [" . l:args_args . "]",
 				\"    date: \"" . strftime('%FT%H:%M:%S') . "\"",
 				\"    command: " . l:project_command]
