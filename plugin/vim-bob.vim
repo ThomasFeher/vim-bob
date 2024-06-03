@@ -471,7 +471,7 @@ function! s:ProjectImpl(package, args)
 	let s:project_package_src_dirs = l:project_package_src_dirs
 	let s:project_package_src_dirs_reduced = l:project_package_src_dirs_reduced
 
-	echo 'generate configuration for YouCompleteMe …'
+	echo 'generating compilation database …'
 	call s:CompilationDatabase()
 endfunction
 
