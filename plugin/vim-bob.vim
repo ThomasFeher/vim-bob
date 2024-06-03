@@ -872,6 +872,9 @@ function! s:Persist()
 		" first group is the package name, second group ist the configured
 		" branch, if any
 		let l:match = matchlist(l:line, 'git \(\S*\) \(\S*\)')
+		if len(l:match) < 1
+			echomsg 'error: could not parse result from: ' l:line
+		endif
 		let l:package = l:match[1]
 		if ! empty(l:match[2])
 			let l:branch = l:match[2]
