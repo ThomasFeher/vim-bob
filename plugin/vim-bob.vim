@@ -229,6 +229,9 @@ function! s:ParseProjectArgs(args)
 			endif
 			let g:bob_prefix = l:match[1]
 			" parse directory
+			" Add a message because this can take a while so that the user
+			" does not experience just a hanging editor.
+			echo "Initializing Bob environment ..."
 			call s:Init(expand("%:p:h"))
 			" parse configuration
 			let l:line = getline(l:line_nr + 2)
