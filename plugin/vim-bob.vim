@@ -238,10 +238,10 @@ function! s:ParseProjectArgs(args)
 			endif
 			let l:args.config = l:match[1]
 			" parse arguments
-			let l:line = getline(l:line_nr + 4)
+			let l:line = getline(l:line_nr + 3)
 			let l:match = matchlist(l:line, '    arguments: \(.*\)')
 			if empty(l:match)
-				throw 'internal error: expected entry `arguments` at line ' . (l:line_nr + 4)
+				throw 'internal error: expected entry `arguments` at line ' . (l:line_nr + 3)
 			endif
 			let l:args_string = trim(l:match[1], '[]')
 			let l:args.args = split(l:args_string, ', ')
