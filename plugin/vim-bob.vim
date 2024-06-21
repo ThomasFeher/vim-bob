@@ -239,7 +239,10 @@ function! s:ParseProjectArgs(args)
 			if empty(l:match)
 				throw 'internal error: expected entry `configuration` at line ' . (l:line_nr + 2)
 			endif
-			let l:args.config = l:match[1]
+			let l:config = l:match[1]
+			if !empty(l:config)
+				let l:args.config = l:config
+			endif
 			" parse arguments
 			let l:line = getline(l:line_nr + 3)
 			let l:match = matchlist(l:line, '    arguments: \(.*\)')
