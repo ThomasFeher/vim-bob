@@ -497,8 +497,8 @@ function! s:QueryPaths(package_list, query_params)
 	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path --fail -f "{name} | {src} | {build}" ' . join(a:query_params, ' ') . ' $(< ' . shellescape(s:bob_base_path . '/dev/.packagelist.txt') . ') 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
 	if g:bob_verbose
-		echom '  ' . l:command
-		echom '  ' . join(l:result)
+		echom '  command: ' . l:command
+		echom '  result: ' . join(l:result)
 	endif
 	if v:shell_error
 		" Remove the erroneous package from the package list and retry.
