@@ -486,7 +486,15 @@ function! s:QueryPaths(package_list, query_params)
 	" the container which is of no use on the host where we want to use code
 	" navigation (which needs the source directories) and language servers
 	" (which need the compilation databases from the build directories)
-	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path --fail -f "{name} | {src} | {build}" ' . join(a:query_params, ' ') . ' ' . join(a:package_list, ' ') . ' 2>&1'
+	" The package list can get very long.
+	" Around 130k characters `system()` seems to malfunction and produce no
+	" output anymore.
+	" The actual limit can be found using `xargs --show-limits`.
+	" The package list is therefore written to a file in advance and then
+	" provided as a single argument (because unquoted).
+	" I do not know what exactly happens internally, but it works.
+	call writefile(a:package_list, s:bob_base_path . '/dev/.packagelist.txt')
+	let l:command = 'cd ' . shellescape(s:bob_base_path) . '; bob query-path --fail -f "{name} | {src} | {build}" ' . join(a:query_params, ' ') . ' $(< ' . shellescape(s:bob_base_path . '/dev/.packagelist.txt') . ') 2>&1'
 	let l:result = split(s:RemoveInfoMessages(system(l:command)), "\n")
 	if g:bob_verbose
 		echom '  ' . l:command
