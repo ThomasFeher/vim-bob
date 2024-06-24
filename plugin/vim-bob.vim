@@ -500,6 +500,9 @@ function! s:QueryPaths(package_list, query_params)
 		echom '  command: ' . l:command
 		echom '  result: ' . join(l:result)
 	endif
+	if empty(l:result)
+		throw "Internal error: Bob returned empty response during call to 'bob query-path'."
+	endif
 	if v:shell_error
 		" Remove the erroneous package from the package list and retry.
 		"   parse package name that failed
