@@ -823,7 +823,7 @@ function! s:Persist()
 				\ . join(s:project_query_options, ' ') . ' ' . s:project_name
 	let l:query_result = systemlist(l:query_command)
 	if v:shell_error
-		echoerr "error calling '" . l:query_command . "': " . trim(l:query_result)
+		echoerr "error calling '" . l:query_command . "': " . trim(join(l:query_result))
 		return
 	endif
 	echo 'Output of ''' . l:query_command . ''':'
