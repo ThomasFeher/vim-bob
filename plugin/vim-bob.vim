@@ -515,7 +515,10 @@ function! s:QueryPaths(package_list, query_params)
 			" could not parse name, something else happened
 			throw "error calling '" . l:command . "': " . join(l:result)
 		endif
-		"   create a new list without the failed package
+		"   Create a new list without all occurences of the failed package.
+		"   This might be wrong, because only the first occurence failed, and
+		"   others might be using different variables and therefore not faile!
+		"   But it speeds up the process significantly.
 		let l:new_list = []
 		if g:bob_verbose
 			echom "Error calling '" . l:command . "': " . join(l:result) . " Removing package and retrying ..."
